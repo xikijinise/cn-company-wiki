@@ -104,6 +104,11 @@ NOT_ORG = {
     "Q79007": "街道",
 }
 
+# Wikidata 里只标成「品牌」、按类查不出来的名词，逐条列出（同时最好去 Wikidata 修正其 P31）
+NOT_ORG_IDS = {
+    "Q19840758": "沙县小吃：福建三明的地方小吃统称，不是一家企业",
+}
+
 NONORG = PREFIXES + """
 SELECT DISTINCT ?c ?cls WHERE {
   { %s }
@@ -336,6 +341,8 @@ def main() -> int:
     not_org: dict[str, set[str]] = {}
     for r in sparql(NONORG):
         not_org.setdefault(qid(r["c"]["value"]), set()).add(NOT_ORG[qid(r["cls"]["value"])])
+    for c, why in NOT_ORG_IDS.items():
+        not_org.setdefault(c, set()).add(why)
     print(f"  {len(not_org)} found", file=sys.stderr)
 
     print("Querying websites…", file=sys.stderr)
