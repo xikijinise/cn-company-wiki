@@ -17,13 +17,24 @@ async function loadData() {
   throw new Error("无法加载数据");
 }
 
-// 省份名去掉「省 / 市 / 自治区」等后缀，用于紧凑显示
-const shortProvince = (p) => p.replace(/(壮族|回族|维吾尔)?自治区$|省$|市$/, "");
+// 省份名去掉「省 / 市 / 自治区 / 特别行政区」等后缀，用于紧凑显示
+const shortProvince = (p) => p.replace(/(壮族|回族|维吾尔)?自治区$|特别行政区$|省$|市$/, "");
+
+// 「含港澳台」开关：默认关闭，各页共用，记在本浏览器里（存不了也不影响当前页使用）
+const HMT_KEY = "cnwiki.hmt";
+let hmtState = (() => { try { return localStorage.getItem(HMT_KEY) === "1"; } catch { return false; } })();
+const hmtOn = () => hmtState;
+function setHmt(on) {
+  hmtState = on;
+  try { on ? localStorage.setItem(HMT_KEY, "1") : localStorage.removeItem(HMT_KEY); } catch { /* 隐私模式等 */ }
+}
+const visible = (list) => (hmtState ? list : list.filter((c) => !c.hmt));
 
 function row(c) {
   const name = c.zh || c.en || c.id;
   const en = c.zh && c.en ? `<span class="en">${esc(c.en)}</span>` : "";
   const tags = (c.type && c.type !== "企业" ? `<span class="tag kind">${esc(c.type)}</span>` : "") +
+    (c.hmt && c.province ? `<span class="tag kind">${esc(shortProvince(c.province))}</span>` : "") +
     (c.listed ? `<span class="tag listed">上市</span>` : "") +
     (c.dissolved != null ? `<span class="tag gone">已解散 ${c.dissolved}</span>` : "");
   const meta = [

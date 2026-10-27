@@ -22,10 +22,10 @@ gh workflow run deploy.yml -f refresh=true # 在 CI 上重新抓取并部署
 ## 已定下的决策（别轻易推翻）
 
 - **用 QLever 端点**（`https://qlever.dev/api/wikidata`）。官方 `query.wikidata.org` 有 60 秒超时，`wdt:P31/wdt:P279*` 全量遍历跑不完，分批方案也被 502/504/429 拖到一小时以上。QLever 偶尔返回 429 "Operation timed out"，脚本已带重试。
-- **收录范围**：`P31/P279*` 属于企业 Q4830453、`P17` = Q148、有 zh 或 en 维基条目。
+- **收录范围**：`P31/P279*` 属于企业 Q4830453、`P17` ∈ {Q148 中国, Q865 台湾, Q8646 香港, Q14773 澳门}、有 zh 或 en 维基条目。
 - **学校等机构也收录**（用户明确要求），不剔除，用 `type` 字段标注（教育机构 / 图书馆 / 品牌 …），前端可按类型筛选。直接标为公司 / 企业等核心类的条目一律归为「企业」，即使同时是「网站」「品牌」（如晋江文学城）。
-- **港澳**：只有总部（P159）**全部**在香港 / 澳门才排除；同时登记了大陆总部的（如「北京市 / 香港」）保留。分部 / 分公司一般没有独立条目，有独立条目的作为独立企业收录。
-- **保护阈值**：结果少于 3000 条时脚本以非零码退出且不覆盖已有数据，CI 沿用上一版数据。
+- **港澳台**：可选，**默认关闭**（用户要求）。数据里带 `"hmt": true` 标记，前端列表页 / 地图页的「含港澳台」开关控制显示，状态存 localStorage（`cnwiki.hmt`），列表页 hash 里也有 `hmt`。判定：`P17` 不含 Q148 的，或 `P17` 是 Q148 但总部（P159）**全部**在香港 / 澳门的，算港澳台；同时登记了大陆总部的（如「北京市 / 香港」）算大陆。港澳台条目的 `province` 为 香港特别行政区 / 澳门特别行政区 / 台湾省（先看总部，没有则按 P17），`city` 恒为 null。大陆部分的条目集合不受影响。分部 / 分公司一般没有独立条目，有独立条目的作为独立企业收录。
+- **保护阈值**：大陆条目少于 3000 条时脚本以非零码退出且不覆盖已有数据，CI 沿用上一版数据。
 - 数据错误应在 Wikidata 上修正，不在本仓库手工修补数据。
 
 ## 数据格式（前端依赖，改字段要同步改 site/app.js）
@@ -36,7 +36,7 @@ gh workflow run deploy.yml -f refresh=true # 在 CI 上重新抓取并部署
    "zhwiki": "url|null", "enwiki": "url|null", "website": "url|null",
    "hq": "深圳市 | 北京市 / 香港 | null", "province": "广东省 | null", "city": "深圳市 | null",
    "industry": ["…"],
-   "founded": 1987, "dissolved": null, "listed": false}
+   "founded": 1987, "dissolved": null, "listed": false, "hmt": true /* 仅港澳台条目有此键 */}
 ]}
 ```
 
@@ -49,6 +49,6 @@ gh workflow run deploy.yml -f refresh=true # 在 CI 上重新抓取并部署
 
 ## 约定
 
-- 提交身份用 `xikijinise` + GitHub noreply 邮箱（`<用户 id>+xikijinise@users.noreply.github.com`，id 可用 `gh api user -q .id` 查），不要用个人邮箱。该配置只存在本地 `.git/config`，新克隆的环境需要重新设置。
+- 提交身份用 `Claude <noreply@anthropic.com>`（用户选定；云端环境的检查要求提交者邮箱为此，否则 GitHub 显示 Unverified），不要用个人邮箱。该配置只存在本地 `.git/config`，新克隆的环境需要重新设置。早期提交用的是 `xikijinise` 的 noreply 邮箱，不必改写。
 - 云端环境如果限制外网，抓取脚本需要能访问 `qlever.dev`；访问不了时不要动 `data/companies.json`，改用 `gh workflow run deploy.yml -f refresh=true` 在 CI 上刷新。
 - 前端文案用简体中文。
