@@ -94,15 +94,14 @@ SELECT DISTINCT ?c ?cat WHERE {
   FILTER NOT EXISTS { VALUES ?core { %s } ?c wdt:P31 ?core }
 }""" % (COMPANIES, " ".join("wd:" + q for q in CATEGORIES), " ".join("wd:" + q for q in CORE_CLASSES))
 
-# 只是一个名词、不是机构的条目：小吃 / 菜系（如沙县小吃）、街道、地名等。
+# 只是一个名词、不是机构的条目：小吃 / 菜系（如沙县小吃）、街道等。
+# 别加「地理特征」「建筑」这类宽泛的类：酒店、大学、图书馆都会被误伤。
 # 直接标为公司等核心类（CORE_CLASSES）的条目不受影响。
 NOT_ORG = {
     "Q2095": "食物",
     "Q746549": "菜肴",
     "Q1778821": "菜系",
     "Q79007": "街道",
-    "Q486972": "聚落",
-    "Q618123": "地理特征",
 }
 
 NONORG = PREFIXES + """
