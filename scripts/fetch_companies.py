@@ -99,14 +99,10 @@ SELECT DISTINCT ?c ?cat WHERE {
 # 直接标为公司等核心类（CORE_CLASSES）的条目不受影响。
 NOT_ORG = {
     "Q2095": "食物",
+    "Q19861951": "食品种类",  # 沙县小吃同时是「连锁餐厅」和「食品种类」，按后者剔除
     "Q746549": "菜肴",
     "Q1778821": "菜系",
     "Q79007": "街道",
-}
-
-# Wikidata 里只标成「品牌」、按类查不出来的名词，逐条列出（同时最好去 Wikidata 修正其 P31）
-NOT_ORG_IDS = {
-    "Q19840758": "沙县小吃：福建三明的地方小吃统称，不是一家企业",
 }
 
 NONORG = PREFIXES + """
@@ -283,12 +279,20 @@ def wiki_sites(urls: dict[str, str]) -> dict[str, str]:
                   "format": "json", "formatversion": "2", "redirects": "1", "titles": "|".join(batch)}
         cont: dict = {}
         while True:
-            try:
-                r = requests.get(api, params={**params, **cont}, headers={"User-Agent": USER_AGENT}, timeout=60)
-                r.raise_for_status()
-                data = r.json()
-            except (requests.RequestException, ValueError) as e:
-                print(f"  {api} -> {type(e).__name__}: {e}", file=sys.stderr)
+            data = None
+            for attempt in range(5):
+                try:
+                    r = requests.get(api, params={**params, **cont}, headers={"User-Agent": USER_AGENT}, timeout=60)
+                    if r.status_code == 429:  # 限流：按 Retry-After 等待后重试
+                        time.sleep(int(r.headers.get("Retry-After", "") or 0) or 5 * (attempt + 1))
+                        continue
+                    r.raise_for_status()
+                    data = r.json()
+                    break
+                except (requests.RequestException, ValueError) as e:
+                    print(f"  {api} -> {type(e).__name__}: {e}", file=sys.stderr)
+                    time.sleep(5 * (attempt + 1))
+            if data is None:
                 break
             q = data.get("query", {})
             # 标题归一化 / 重定向后要映射回原标题
@@ -307,7 +311,8 @@ def wiki_sites(urls: dict[str, str]) -> dict[str, str]:
             if "continue" not in data:
                 break
             cont = data["continue"]
-        time.sleep(0.5)
+            time.sleep(1)
+        time.sleep(1)
     return found
 
 
@@ -341,8 +346,6 @@ def main() -> int:
     not_org: dict[str, set[str]] = {}
     for r in sparql(NONORG):
         not_org.setdefault(qid(r["c"]["value"]), set()).add(NOT_ORG[qid(r["cls"]["value"])])
-    for c, why in NOT_ORG_IDS.items():
-        not_org.setdefault(c, set()).add(why)
     print(f"  {len(not_org)} found", file=sys.stderr)
 
     print("Querying websites…", file=sys.stderr)
