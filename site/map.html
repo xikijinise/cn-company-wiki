@@ -19,9 +19,10 @@
 </header>
 
 <main class="wrap mapgrid">
-  <section class="card mapcard" aria-label="中国大陆省级行政区企业分布图">
+  <section class="card mapcard" aria-label="省级行政区企业分布图">
+    <label class="chk maptoggle" title="默认只显示中国大陆"><input type="checkbox" id="hmt"> 含港澳台</label>
     <div id="map" class="map"></div>
-    <p class="hint" id="hint">按总部（或所在地）所在省份统计；港澳台不在收录范围。</p>
+    <p class="hint" id="hint">按总部（或所在地）所在省份统计；港澳台默认不显示，勾选右上角「含港澳台」即可加入。</p>
   </section>
   <aside class="card rank" aria-label="省份排行">
     <h2>省份排行</h2>

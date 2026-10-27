@@ -58,6 +58,7 @@ function base(t) {
 
 // 横向条形图：pairs 为 [名称, 数量]，按数量降序
 function hbar(pairs, kind, t) {
+  if (!charts[kind]) return;
   const data = pairs.slice().reverse();
   charts[kind].setOption({
     ...base(t),
@@ -198,8 +199,9 @@ async function init() {
   try {
     const data = await loadData();
     $("generated").textContent = data.generated ? new Date(data.generated).toLocaleDateString("zh-CN") : "—";
+    // 港澳台页面直接打开时照常显示；排名和下拉框跟随「含港澳台」开关
     const all = data.companies.map((c) => ({ ...c, _name: c.zh || c.en || c.id }));
-    const provinces = countBy(all, (c) => c.province);
+    const provinces = countBy(all.filter((c) => !c.hmt || hmtOn() || c.province === name), (c) => c.province);
     $("pick").innerHTML = `<option value="">选择省份…</option>` + provinces
       .map(([p, n]) => `<option value="${esc(p)}"${p === name ? " selected" : ""}>${esc(p)}（${n}）</option>`).join("");
     $("pick").addEventListener("change", (e) => { if (e.target.value) location.search = "?p=" + encodeURIComponent(e.target.value); });
@@ -231,11 +233,13 @@ async function init() {
         charts.map.on("click", (p) => { if (items.some((c) => c.city === p.name)) setFilter({ kind: "city", value: p.name }); });
       } catch { /* 没有边界数据就只显示图表 */ }
     }
-    charts.city = echarts.init($("c-city"));
+    // 只有一个城市（直辖市）或没有城市数据（港澳台）时，城市分布图没意义
+    if (new Set(items.map((c) => c.city)).size > 1) charts.city = echarts.init($("c-city"));
+    else $("c-city").parentElement.hidden = true;
     charts.type = echarts.init($("c-type"));
     charts.industry = echarts.init($("c-ind"));
     charts.decade = echarts.init($("c-year"));
-    charts.city.on("click", (p) => setFilter({ kind: "city", value: p.name }));
+    charts.city?.on("click", (p) => setFilter({ kind: "city", value: p.name }));
     charts.type.on("click", (p) => setFilter({ kind: "type", value: p.name }));
     charts.industry.on("click", (p) => setFilter({ kind: "industry", value: p.name }));
     charts.decade.on("click", (p) => setFilter({ kind: "decade", value: p.name }));

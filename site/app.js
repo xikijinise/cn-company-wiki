@@ -4,7 +4,7 @@ const PAGE = 60;
 const $ = (id) => document.getElementById(id);
 const els = {
   q: $("q"), status: $("status"), type: $("type"), prov: $("prov"), industry: $("industry"), sort: $("sort"),
-  listed: $("listed"), hasSite: $("hasSite"), hasEn: $("hasEn"),
+  listed: $("listed"), hasSite: $("hasSite"), hasEn: $("hasEn"), hmt: $("hmt"),
   list: $("list"), count: $("count"), more: $("more"), stats: $("stats"), generated: $("generated"),
 };
 
@@ -18,28 +18,27 @@ function prepare(c) {
   return c;
 }
 
-function fillTypes() {
-  const counts = new Map();
-  for (const c of all) counts.set(c.type, (counts.get(c.type) || 0) + 1);
-  els.type.insertAdjacentHTML("beforeend", [...counts].sort((a, b) => b[1] - a[1])
-    .map(([t, n]) => `<option value="${esc(t)}">${esc(t)}（${n.toLocaleString()}）</option>`).join(""));
+// 下拉框选项随「含港澳台」开关重建，保留当前选择（若选项已不存在则回到「全部」）
+function fillSelect(el, pairs) {
+  const keep = el.value;
+  el.innerHTML = el.options[0].outerHTML +
+    pairs.map(([v, n]) => `<option value="${esc(v)}">${esc(v)}（${n.toLocaleString()}）</option>`).join("");
+  el.value = keep;
+  if (el.value !== keep) el.value = "";
 }
 
-function fillProvinces() {
-  els.prov.insertAdjacentHTML("beforeend", countBy(all, (c) => c.province)
-    .map(([p, n]) => `<option value="${esc(p)}">${esc(p)}（${n}）</option>`).join(""));
-}
-
-function fillIndustries() {
-  const counts = new Map();
-  for (const c of all) for (const i of c.industry || []) counts.set(i, (counts.get(i) || 0) + 1);
-  const top = [...counts].filter(([, n]) => n >= 5).sort((a, b) => b[1] - a[1]).slice(0, 80);
-  els.industry.insertAdjacentHTML("beforeend",
-    top.map(([i, n]) => `<option value="${esc(i)}">${esc(i)}（${n}）</option>`).join(""));
+function fillOptions() {
+  const pool = visible(all);
+  fillSelect(els.type, countBy(pool, (c) => c.type));
+  fillSelect(els.prov, countBy(pool, (c) => c.province));
+  fillSelect(els.industry, countBy(pool, (c) => c.industry).filter(([, n]) => n >= 5).slice(0, 80));
 }
 
 function readState() {
   const p = new URLSearchParams(location.hash.slice(1));
+  if (p.has("hmt")) setHmt(true);
+  els.hmt.checked = hmtOn();
+  fillOptions();
   els.q.value = p.get("q") || "";
   els.status.value = p.get("status") || "active";
   els.type.value = p.get("type") || "";
@@ -62,6 +61,7 @@ function writeState() {
   if (els.listed.checked) p.set("listed", "");
   if (els.hasSite.checked) p.set("site", "");
   if (els.hasEn.checked) p.set("en", "");
+  if (els.hmt.checked) p.set("hmt", "");
   const h = p.toString();
   history.replaceState(null, "", h ? "#" + h : location.pathname + location.search);
 }
@@ -72,7 +72,7 @@ function apply() {
   const ind = els.industry.value;
   const type = els.type.value;
   const prov = els.prov.value;
-  filtered = all.filter((c) =>
+  filtered = visible(all).filter((c) =>
     (status === "all" || (status === "active") === (c.dissolved == null)) &&
     (!type || c.type === type) &&
     (!prov || c.province === prov) &&
@@ -104,11 +104,16 @@ function renderMore() {
   if (!filtered.length) els.list.innerHTML = `<li class="empty">没有符合条件的企业</li>`;
 }
 
-function renderStats(data) {
-  const n = (f) => all.filter(f).length.toLocaleString();
+function renderStats() {
+  const pool = visible(all);
+  const n = (f) => pool.filter(f).length.toLocaleString();
   els.stats.innerHTML =
-    `收录 <b>${all.length.toLocaleString()}</b> 家 · 企业 <b>${n((c) => c.type === "企业")}</b> · 存续 <b>${n((c) => c.dissolved == null)}</b> · ` +
-    `有官网 <b>${n((c) => c.website)}</b> · 上市 <b>${n((c) => c.listed)}</b> · 有英文维基 <b>${n((c) => c.enwiki)}</b>`;
+    `收录 <b>${pool.length.toLocaleString()}</b> 家 · 企业 <b>${n((c) => c.type === "企业")}</b> · 存续 <b>${n((c) => c.dissolved == null)}</b> · ` +
+    `有官网 <b>${n((c) => c.website)}</b> · 上市 <b>${n((c) => c.listed)}</b> · 有英文维基 <b>${n((c) => c.enwiki)}</b>` +
+    (hmtOn() ? ` · 其中港澳台 <b>${n((c) => c.hmt)}</b>` : "");
+}
+
+function renderGenerated(data) {
   els.generated.textContent = data.generated ? new Date(data.generated).toLocaleDateString("zh-CN") : "—";
 }
 
@@ -116,11 +121,9 @@ async function init() {
   try {
     const data = await loadData();
     all = data.companies.map(prepare).sort((a, b) => a._name.localeCompare(b._name, "zh-CN"));
-    renderStats(data);
-    fillTypes();
-    fillProvinces();
-    fillIndustries();
+    renderGenerated(data);
     readState();
+    renderStats();
     apply();
   } catch (e) {
     els.stats.textContent = "数据加载失败：" + e.message;
@@ -130,6 +133,12 @@ async function init() {
   els.q.addEventListener("input", () => { clearTimeout(t); t = setTimeout(apply, 150); });
   for (const el of [els.status, els.type, els.prov, els.industry, els.sort, els.listed, els.hasSite, els.hasEn]) el.addEventListener("change", apply);
   els.more.addEventListener("click", renderMore);
+  els.hmt.addEventListener("change", () => {
+    setHmt(els.hmt.checked);
+    fillOptions();
+    renderStats();
+    apply();
+  });
 }
 
 init();

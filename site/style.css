@@ -102,6 +102,8 @@ a { color: var(--accent); }
 /* 地图页 */
 .wrap.mapgrid { max-width: 1180px; display: grid; grid-template-columns: minmax(0, 1fr) 260px; gap: 16px; padding-top: 20px; }
 .map { width: 100%; height: min(640px, 72vh); }
+.mapcard { position: relative; }
+.maptoggle { position: absolute; top: 12px; right: 16px; z-index: 2; font-size: 14px; }
 .rank ol { list-style: none; margin: 0; padding: 0; max-height: min(640px, 72vh); overflow-y: auto; }
 .rank a {
   display: grid; grid-template-columns: 4.5em 1fr 3em; gap: 8px; align-items: center;

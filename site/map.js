@@ -4,17 +4,19 @@ const $ = (id) => document.getElementById(id);
 
 // 色阶分档：家数下限
 const STEPS = [1, 25, 50, 100, 200, 500];
-const OUTSIDE = new Set(["台湾省", "香港特别行政区", "澳门特别行政区"]);
+const HMT = new Set(["台湾省", "香港特别行政区", "澳门特别行政区"]);
 
 let chart;
+let all = [];
 let summary = new Map(); // 省份 -> 概况
 let ranked = [];
 
 const provinceUrl = (p) => "province.html?p=" + encodeURIComponent(p);
 
-function summarize(all) {
+function summarize() {
   const by = new Map();
-  for (const c of all) if (c.province) (by.get(c.province) || by.set(c.province, []).get(c.province)).push(c);
+  summary = new Map();
+  for (const c of visible(all)) if (c.province) (by.get(c.province) || by.set(c.province, []).get(c.province)).push(c);
   ranked = [...by].map(([name, list]) => ({
     name,
     total: list.length,
@@ -30,11 +32,11 @@ function summarize(all) {
 function tooltip(params) {
   const name = params.name;
   if (!name) return "";
-  if (OUTSIDE.has(name)) return `<b>${esc(name)}</b><br><span class="tt-muted">不在收录范围（仅收录中国大陆企业）</span>`;
+  if (HMT.has(name) && !hmtOn()) return `<b>${esc(name)}</b><br><span class="tt-muted">已隐藏，勾选右上角「含港澳台」显示</span>`;
   const s = summary.get(name);
   if (!s) return `<b>${esc(name)}</b><br><span class="tt-muted">暂无收录</span>`;
   const list = (pairs) => pairs.map(([k, n]) => `${esc(k)} ${n}`).join("、") || "—";
-  return `<div class="tt"><b>${esc(name)}</b> <span class="tt-muted">全国第 ${s.rank}</span>` +
+  return `<div class="tt"><b>${esc(name)}</b> <span class="tt-muted">第 ${s.rank} 名</span>` +
     `<div class="tt-big">${s.total.toLocaleString()} <small>家</small></div>` +
     `<div>企业 ${s.business} · 上市 ${s.listed} · 已解散 ${s.dissolved}</div>` +
     `<div><span class="tt-muted">主要城市</span> ${list(s.cities)}</div>` +
@@ -77,6 +79,17 @@ function renderRank() {
     `<span class="r-name">${esc(shortProvince(s.name))}</span>` +
     `<span class="r-bar"><i style="width:${(s.total / max * 100).toFixed(1)}%"></i></span>` +
     `<span class="r-num">${s.total}</span></a></li>`).join("");
+}
+
+function renderStats() {
+  const pool = visible(all);
+  const located = ranked.reduce((n, s) => n + s.total, 0);
+  $("stats").innerHTML = `收录 <b>${pool.length.toLocaleString()}</b> 家，其中 <b>${located.toLocaleString()}</b> 家可定位到省份 · 覆盖 <b>${ranked.length}</b> 个省级行政区` +
+    (hmtOn() ? `（含港澳台 <b>${pool.filter((c) => c.hmt).length.toLocaleString()}</b> 家）` : "");
+  if (!located) $("hint").textContent = "当前数据还没有省份字段，等下次数据刷新后即可显示。";
+}
+
+function bindRank() {
   // 悬停排行时在地图上高亮对应省份
   $("rank").addEventListener("mouseover", (e) => {
     const li = e.target.closest("li");
@@ -94,17 +107,24 @@ function renderRank() {
 async function init() {
   try {
     const [data, geo] = await Promise.all([loadData(), fetch("geo/china.json").then((r) => r.json())]);
-    const all = data.companies;
-    summarize(all);
-    const located = ranked.reduce((n, s) => n + s.total, 0);
-    $("stats").innerHTML = `收录 <b>${all.length.toLocaleString()}</b> 家，其中 <b>${located.toLocaleString()}</b> 家可定位到省份 · 覆盖 <b>${ranked.length}</b> 个省级行政区`;
+    all = data.companies;
     $("generated").textContent = data.generated ? new Date(data.generated).toLocaleDateString("zh-CN") : "—";
-    if (!located) $("hint").textContent = "当前数据还没有省份字段，等下次数据刷新后即可显示。";
+    $("hmt").checked = hmtOn();
+    summarize();
+    renderStats();
 
     echarts.registerMap("china", geo);
     chart = echarts.init($("map"));
     renderMap();
     renderRank();
+    bindRank();
+    $("hmt").addEventListener("change", (e) => {
+      setHmt(e.target.checked);
+      summarize();
+      renderStats();
+      renderMap();
+      renderRank();
+    });
 
     // 触屏没有悬停：第一次点按显示概况，再点同一省份才进入
     const touch = matchMedia("(hover: none)").matches;

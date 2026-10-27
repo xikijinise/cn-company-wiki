@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""从 Wikidata 抓取中国大陆、且有中文或英文维基百科条目的企业，输出 data/companies.json。
+"""从 Wikidata 抓取中国（含港澳台，带 hmt 标记）、且有中文或英文维基百科条目的企业，输出 data/companies.json。
 
 查询走 QLever（https://qlever.dev）的 Wikidata 端点：它能在几十秒内跑完
 P31/P279* 全量遍历，而官方 query.wikidata.org 端点 60 秒就会超时。
@@ -51,9 +51,11 @@ CATEGORIES = {
     "Q431289": "品牌",
 }
 
+# 国家为中华人民共和国、台湾、香港、澳门的企业；港澳台条目带 hmt 标记，前端默认隐藏
 COMPANIES = """
 SELECT DISTINCT ?c WHERE {
-  ?c wdt:P17 wd:Q148 ; wdt:P31/wdt:P279* wd:Q4830453 .
+  ?c wdt:P17 ?country ; wdt:P31/wdt:P279* wd:Q4830453 .
+  VALUES ?country { wd:Q148 wd:Q865 wd:Q8646 wd:Q14773 }
   ?a schema:about ?c ; schema:isPartOf ?w .
   VALUES ?w { <https://zh.wikipedia.org/> <https://en.wikipedia.org/> }
 }"""
@@ -144,6 +146,8 @@ PROVINCES = {
     "Q34800": "新疆维吾尔自治区",
 }
 MUNICIPALITIES = {"Q956", "Q11736", "Q8686", "Q11725"}
+# 港澳台，名称同样与 GeoJSON 一致；Q57251 为「台湾省」
+REGIONS = {"Q8646": "香港特别行政区", "Q14773": "澳门特别行政区", "Q865": "台湾省", "Q57251": "台湾省"}
 
 # 由总部（P159）沿 P131* 上溯到省级和地级市（Q748149）；没填总部的退而用条目自身的 P131
 LOCATION = PREFIXES + """
@@ -156,7 +160,7 @@ SELECT DISTINCT ?c ?src ?loc ?prov ?city ?cityLabel WHERE {
     ?loc wdt:P131* ?city . ?city wdt:P31 wd:Q748149 .
     ?city rdfs:label ?cityLabel FILTER(LANG(?cityLabel) IN ("zh-cn", "zh-hans", "zh"))
   }
-}""" % (COMPANIES, " ".join("wd:" + q for q in PROVINCES))
+}""" % (COMPANIES, " ".join("wd:" + q for q in {**PROVINCES, **REGIONS}))
 
 ZH_ORDER = ("zh-cn", "zh-hans", "zh")
 
@@ -322,25 +326,27 @@ def main() -> int:
     rows = sparql(DETAILS)
     print(f"  {len(rows)} rows in {time.time() - t0:.0f}s", file=sys.stderr)
 
-    print("Querying places (HK/Macau exclusion)…", file=sys.stderr)
+    print("Querying places (HK/Macau/Taiwan)…", file=sys.stderr)
     # places[c][src][loc] = 是否位于港澳
     places: dict[str, dict[str, dict[str, bool]]] = {}
     for r in sparql(PLACES):
         slot = places.setdefault(qid(r["c"]["value"]), {}).setdefault(r["src"]["value"], {})
         loc = qid(r["loc"]["value"])
         slot[loc] = slot.get(loc, False) or "sar" in r
-    # 有总部看总部，没总部看所在行政区：全部在港澳才排除（同时登记了大陆总部的保留）；都没填则看国家是否含港澳
-    excluded = set()
+    countries = {c: set(srcs.get("country", {})) for c, srcs in places.items()}
+    # 国家不含中华人民共和国的（台湾等）算港澳台；否则有总部看总部，没总部看所在行政区，全部在港澳才算
+    # （同时登记了大陆总部的算大陆）；都没填则看国家是否含港澳。港澳台条目保留，打 hmt 标记
+    hmt = {c for c, cs in countries.items() if "Q148" not in cs}
     for c, srcs in places.items():
         for src in ("hq", "in"):
             if srcs.get(src):
                 if all(srcs[src].values()):
-                    excluded.add(c)
+                    hmt.add(c)
                 break
         else:
             if any(srcs.get("country", {}).values()):
-                excluded.add(c)
-    print(f"  {len(excluded)} excluded", file=sys.stderr)
+                hmt.add(c)
+    print(f"  {len(hmt)} HK/Macau/Taiwan", file=sys.stderr)
 
     print("Querying non-organisations…", file=sys.stderr)
     not_org: dict[str, set[str]] = {}
@@ -375,20 +381,19 @@ def main() -> int:
     for r in sparql(LOCATION):
         c, src, loc, prov = qid(r["c"]["value"]), r["src"]["value"], qid(r["loc"]["value"]), qid(r["prov"]["value"])
         label = r.get("cityLabel", {})
-        city = PROVINCES[prov] if prov in MUNICIPALITIES else label.get("value")
+        name = PROVINCES.get(prov) or REGIONS[prov]
+        city = name if prov in MUNICIPALITIES else None if prov in REGIONS else label.get("value")
         # 同一地点可能返回多种中文标签，取简体优先（zh 常是繁体，如「貴陽市」）
-        rank = -1 if prov in MUNICIPALITIES else ZH_ORDER.index(label["xml:lang"]) if city else len(ZH_ORDER)
+        rank = -1 if prov in MUNICIPALITIES or prov in REGIONS else ZH_ORDER.index(label["xml:lang"]) if city else len(ZH_ORDER)
         slot = locs.setdefault(c, {}).setdefault(src, {})
         if loc not in slot or rank < slot[loc][2]:
-            slot[loc] = (PROVINCES[prov], city, rank)
+            slot[loc] = (name, city, rank)
 
     acc: dict[str, dict] = {}
     for r in rows:
         g = lambda k: r.get(k, {}).get("value")
         lang = lambda k: r.get(k, {}).get("xml:lang")
         c = qid(g("c"))
-        if c in excluded:
-            continue
         d = acc.setdefault(c, {"labels": {}, "hq": {}, "ind": {}, "zhwiki": None,
                                "enwiki": None, "inception": None, "dissolved": None, "listed": False})
         if g("label"):
@@ -433,17 +438,22 @@ def main() -> int:
             name = pick_any(labels)
             if name and name not in hqs:
                 hqs.append(name)
-        # 省份取显示顺序中第一个能定位的总部，没有则用 P131
+        # 省份取显示顺序中第一个能定位的总部，没有则用 P131；大陆条目只取大陆省份，港澳台条目只取港澳台
+        is_hmt = c in hmt
+        allowed = set(REGIONS.values()) if is_hmt else set(PROVINCES.values())
         province = city = None
         found = locs.get(c, {})
         hq_order = sorted(d["hq"], key=lambda q: pick_any(d["hq"][q]) or q)
         for src, order in (("hq", hq_order), ("in", sorted(found.get("in", {})))):
             for loc in order:
-                if loc in found.get(src, {}):
+                if loc in found.get(src, {}) and found[src][loc][0] in allowed:
                     province, city, _ = found[src][loc]
                     break
             if province:
                 break
+        if is_hmt and not province:
+            # 没有可用的总部 / 所在地（或总部在大陆，如台资企业），按国家归属
+            province = next((REGIONS[q] for q in sorted(countries.get(c, ())) if q in REGIONS), None)
         companies.append({
             "id": c,
             "type": CATEGORIES[cats[c]] if c in cats else "企业",
@@ -460,6 +470,7 @@ def main() -> int:
             "founded": d["inception"],
             "dissolved": d["dissolved"],
             "listed": d["listed"],
+            **({"hmt": True} if is_hmt else {}),
         })
     companies.sort(key=lambda x: (x["zh"] or x["en"] or x["id"], x["id"]))
 
@@ -472,11 +483,13 @@ def main() -> int:
         "dissolved": sum(1 for x in companies if x["dissolved"] is not None),
         "listed": sum(1 for x in companies if x["listed"]),
         "province": sum(1 for x in companies if x["province"]),
+        "hmt": sum(1 for x in companies if x.get("hmt")),
     }
     print("Stats: " + ", ".join(f"{k}={v}" for k, v in stats.items()), file=sys.stderr)
 
-    if len(companies) < MIN_COUNT:
-        print(f"Only {len(companies)} companies (< {MIN_COUNT}); keeping existing {OUT_PATH.name}", file=sys.stderr)
+    mainland = sum(1 for x in companies if not x.get("hmt"))
+    if mainland < MIN_COUNT:
+        print(f"Only {mainland} mainland companies (< {MIN_COUNT}); keeping existing {OUT_PATH.name}", file=sys.stderr)
         return 1
 
     OUT_PATH.parent.mkdir(parents=True, exist_ok=True)
