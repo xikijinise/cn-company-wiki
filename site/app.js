@@ -5,7 +5,7 @@ const $ = (id) => document.getElementById(id);
 const els = {
   q: $("q"), status: $("status"), type: $("type"), prov: $("prov"), industry: $("industry"), sort: $("sort"),
   listed: $("listed"), hasSite: $("hasSite"), hasEn: $("hasEn"), hmt: $("hmt"),
-  list: $("list"), count: $("count"), more: $("more"), stats: $("stats"), generated: $("generated"),
+  controls: $("controls"), list: $("list"), count: $("count"), more: $("more"), stats: $("stats"), generated: $("generated"),
 };
 
 let all = [];
@@ -141,4 +141,23 @@ async function init() {
   });
 }
 
+// 筛选栏吸顶后：往下滚收起、往上滚出现；正在输入搜索词时不收起
+function autoHideControls() {
+  let lastY = scrollY;
+  let ticking = false;
+  const update = () => {
+    ticking = false;
+    const y = scrollY;
+    const stuck = y > els.controls.parentElement.offsetTop + els.controls.offsetHeight;
+    // 只在搜索框输入时保持显示；下拉框 / 复选框操作完焦点会一直留着，不能算
+    const busy = document.activeElement === els.q;
+    if (!stuck || busy || y < lastY - 6) els.controls.classList.remove("tucked");
+    else if (y > lastY + 6) els.controls.classList.add("tucked");
+    if (Math.abs(y - lastY) > 6) lastY = y;
+  };
+  addEventListener("scroll", () => { if (!ticking) { ticking = true; requestAnimationFrame(update); } }, { passive: true });
+  els.controls.addEventListener("focusin", () => els.controls.classList.remove("tucked")); // Tab 键聚焦时也要看得见
+}
+
+autoHideControls();
 init();

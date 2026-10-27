@@ -39,7 +39,13 @@ a { color: var(--accent); }
 .stats { margin: 14px 0 0; font-size: 13px; color: var(--muted); font-variant-numeric: tabular-nums; }
 .stats b { color: var(--text); font-weight: 600; }
 
-.controls { position: sticky; top: 0; z-index: 5; background: var(--bg); padding: 16px 0 12px; border-bottom: 1px solid var(--line); }
+.controls {
+  position: sticky; top: 0; z-index: 5; background: var(--bg); padding: 16px 0 12px; border-bottom: 1px solid var(--line);
+  transition: transform .22s ease;
+}
+/* 往下滚时收起筛选栏，往上滚时再出现（app.js 切换） */
+.controls.tucked { transform: translateY(calc(-100% - 1px)); }
+@media (prefers-reduced-motion: reduce) { .controls { transition: none; } }
 #q {
   width: 100%; padding: 11px 14px; font-size: 16px;
   border: 1px solid var(--line); border-radius: 10px;
