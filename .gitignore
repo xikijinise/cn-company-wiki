@@ -1,0 +1,4 @@
+data/.ids_cache.json
+__pycache__/
+*.pyc
+.claude/

@@ -1,0 +1,94 @@
+:root {
+  --bg: #fafaf7;
+  --surface: #ffffff;
+  --text: #1c1b19;
+  --muted: #6b6860;
+  --line: #e6e3dc;
+  --accent: #b42318;
+  --accent-soft: #fbeae8;
+  --chip: #f1efe9;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #151412;
+    --surface: #1e1d1a;
+    --text: #ece9e2;
+    --muted: #9c978c;
+    --line: #2f2d29;
+    --accent: #f0786b;
+    --accent-soft: #3a201d;
+    --chip: #2a2825;
+    color-scheme: dark;
+  }
+}
+
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font: 15px/1.55 -apple-system, "PingFang SC", "Microsoft YaHei", "Noto Sans CJK SC", "Segoe UI", sans-serif;
+}
+a { color: var(--accent); }
+.wrap { max-width: 960px; margin: 0 auto; padding: 0 16px; }
+
+.top { border-bottom: 1px solid var(--line); padding: 36px 0 22px; background: var(--surface); }
+.top h1 { margin: 0; font-size: 28px; letter-spacing: .02em; }
+.lede { margin: 6px 0 0; color: var(--muted); }
+.stats { margin: 14px 0 0; font-size: 13px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.stats b { color: var(--text); font-weight: 600; }
+
+.controls { position: sticky; top: 0; z-index: 5; background: var(--bg); padding: 16px 0 12px; border-bottom: 1px solid var(--line); }
+#q {
+  width: 100%; padding: 11px 14px; font-size: 16px;
+  border: 1px solid var(--line); border-radius: 10px;
+  background: var(--surface); color: var(--text); outline: none;
+}
+#q:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+.filters { display: flex; flex-wrap: wrap; gap: 8px 14px; align-items: center; margin-top: 10px; font-size: 14px; }
+.filters select {
+  padding: 6px 8px; border: 1px solid var(--line); border-radius: 8px;
+  background: var(--surface); color: var(--text); font: inherit; max-width: 100%;
+}
+.chk { display: inline-flex; gap: 5px; align-items: center; color: var(--muted); cursor: pointer; }
+.chk input { accent-color: var(--accent); }
+
+.count { color: var(--muted); font-size: 13px; margin: 14px 0 6px; }
+.list { list-style: none; margin: 0; padding: 0; }
+.item {
+  display: grid; grid-template-columns: 1fr auto; gap: 4px 16px; align-items: start;
+  padding: 14px 0; border-bottom: 1px solid var(--line);
+}
+.name { font-size: 16px; font-weight: 600; }
+.name .en { font-weight: 400; color: var(--muted); font-size: 14px; margin-left: 8px; }
+.tag { display: inline-block; font-size: 11px; padding: 1px 6px; border-radius: 4px; margin-left: 6px; vertical-align: 2px; font-weight: 500; }
+.tag.listed { background: var(--accent-soft); color: var(--accent); }
+.tag.gone { background: var(--chip); color: var(--muted); }
+.meta { grid-column: 1; color: var(--muted); font-size: 13px; }
+.meta .ind { background: var(--chip); border-radius: 4px; padding: 0 6px; margin-right: 4px; white-space: nowrap; }
+.links { grid-column: 2; grid-row: 1 / span 2; display: flex; gap: 6px; flex-wrap: wrap; justify-content: flex-end; }
+.links a {
+  font-size: 13px; text-decoration: none; padding: 4px 10px; border-radius: 6px;
+  border: 1px solid var(--line); color: var(--text); background: var(--surface); white-space: nowrap;
+}
+.links a:hover { border-color: var(--accent); color: var(--accent); }
+.links a.site { background: var(--accent); border-color: var(--accent); color: #fff; }
+.links a.site:hover { opacity: .88; color: #fff; }
+.empty { padding: 40px 0; text-align: center; color: var(--muted); }
+
+.more {
+  display: block; margin: 20px auto 8px; padding: 9px 26px; font: inherit;
+  border: 1px solid var(--line); border-radius: 8px; background: var(--surface); color: var(--text); cursor: pointer;
+}
+.more:hover { border-color: var(--accent); color: var(--accent); }
+.more[hidden] { display: none; }
+.foot { color: var(--muted); font-size: 12px; padding-top: 24px; padding-bottom: 40px; }
+
+@media (max-width: 640px) {
+  .top { padding-top: 24px; }
+  .top h1 { font-size: 23px; }
+  .item { grid-template-columns: 1fr; }
+  .links { grid-column: 1; grid-row: auto; justify-content: flex-start; margin-top: 4px; }
+  .name .en { display: block; margin-left: 0; }
+}

@@ -1,0 +1,71 @@
+name: Update data & deploy
+
+on:
+  push:
+    branches: [main]
+  schedule:
+    - cron: "17 3 * * 1"   # 每周一 03:17 UTC 重新抓取
+  workflow_dispatch:
+    inputs:
+      refresh:
+        description: "重新从 Wikidata 抓取数据"
+        type: boolean
+        default: true
+
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        if: github.event_name == 'schedule' || inputs.refresh
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      # 抓取失败（端点超时、结果过少）时脚本不会覆盖已有数据，沿用仓库里上一次的 companies.json
+      - name: Fetch from Wikidata
+        if: github.event_name == 'schedule' || inputs.refresh
+        continue-on-error: true
+        timeout-minutes: 60
+        run: |
+          pip install -r scripts/requirements.txt
+          python scripts/fetch_companies.py
+
+      - name: Commit refreshed data
+        if: github.event_name == 'schedule' || inputs.refresh
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/companies.json
+          git diff --cached --quiet || (git commit -m "data: weekly Wikidata refresh" && git push)
+
+      - name: Assemble site
+        run: |
+          mkdir -p _site/data
+          cp -r site/. _site/
+          cp data/companies.json _site/data/
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

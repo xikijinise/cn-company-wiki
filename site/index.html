@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>中国企业维基索引</title>
+<meta name="description" content="收录维基百科有条目的中国大陆企业，附官网、中文维基与英文维基链接。数据来自 Wikidata，每周自动更新。">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='7' fill='%23b42318'/><text x='16' y='23' font-size='19' text-anchor='middle' fill='white' font-family='sans-serif'>企</text></svg>">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header class="top">
+  <div class="wrap">
+    <h1>中国企业维基索引</h1>
+    <p class="lede">维基百科有条目的中国大陆企业 · 官网 / 中文维基 / English Wikipedia</p>
+    <p class="stats" id="stats">正在加载数据…</p>
+  </div>
+</header>
+
+<main class="wrap">
+  <section class="controls" aria-label="搜索与筛选">
+    <input id="q" type="search" placeholder="搜索企业名、英文名、总部或行业…" autocomplete="off" aria-label="搜索">
+    <div class="filters">
+      <select id="status" aria-label="存续状态">
+        <option value="active">存续</option>
+        <option value="dissolved">已解散</option>
+        <option value="all">全部</option>
+      </select>
+      <select id="industry" aria-label="行业"><option value="">全部行业</option></select>
+      <select id="sort" aria-label="排序">
+        <option value="name">按名称</option>
+        <option value="founded">成立：早→晚</option>
+        <option value="founded-desc">成立：晚→早</option>
+      </select>
+      <label class="chk"><input type="checkbox" id="listed"> 上市</label>
+      <label class="chk"><input type="checkbox" id="hasSite"> 有官网</label>
+      <label class="chk"><input type="checkbox" id="hasEn"> 有英文维基</label>
+    </div>
+  </section>
+
+  <p class="count" id="count" aria-live="polite"></p>
+  <ol class="list" id="list"></ol>
+  <button class="more" id="more" hidden>加载更多</button>
+</main>
+
+<footer class="wrap foot">
+  <p>数据来自 <a href="https://www.wikidata.org/">Wikidata</a>（CC0），收录条件：国家为中华人民共和国、总部不在港澳、且有中文或英文维基百科条目。
+  数据更新于 <span id="generated">—</span>。信息有误？请直接在 Wikidata 修改，下周自动同步。</p>
+  <p><a href="https://github.com/xikijinise/cn-company-wiki">GitHub 源码</a></p>
+</footer>
+<script src="app.js"></script>
+</body>
+</html>
