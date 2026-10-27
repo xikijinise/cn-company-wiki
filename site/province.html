@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>省份分析 · 中国企业维基索引</title>
+<meta name="description" content="某一省份维基百科有条目的企业：城市、类型、行业、成立年代分布。">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='7' fill='%23b42318'/><text x='16' y='23' font-size='19' text-anchor='middle' fill='white' font-family='sans-serif'>企</text></svg>">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header class="top">
+  <div class="wrap">
+    <p class="crumb"><a href="map.html">← 返回地图</a></p>
+    <h1 id="title">省份分析</h1>
+    <p class="lede" id="lede">正在加载数据…</p>
+    <label class="switch">切换省份 <select id="pick" aria-label="切换省份"></select></label>
+  </div>
+</header>
+
+<main class="wrap">
+  <section class="kpis" id="kpis" aria-label="概况"></section>
+
+  <section class="charts" aria-label="图表">
+    <div class="card"><h2>城市分布</h2><div class="chart" id="c-city"></div></div>
+    <div class="card"><h2>类型构成</h2><div class="chart" id="c-type"></div></div>
+    <div class="card"><h2>热门行业</h2><div class="chart" id="c-ind"></div></div>
+    <div class="card"><h2>成立年代</h2><div class="chart" id="c-year"></div></div>
+  </section>
+  <p class="hint">点击图表中的柱子或扇区，可在下方名单中筛选。</p>
+
+  <section aria-label="名单">
+    <div class="listhead">
+      <h2>名单</h2>
+      <span id="filter"></span>
+      <a id="toList" class="tolist" href="./">在列表页打开 →</a>
+    </div>
+    <p class="count" id="count"></p>
+    <ol class="list" id="list"></ol>
+    <button class="more" id="more" hidden>加载更多</button>
+  </section>
+</main>
+
+<footer class="wrap foot">
+  <p>数据来自 <a href="https://www.wikidata.org/">Wikidata</a>（CC0），省份由总部（P159）或所在行政区（P131）逐级上溯得出。数据更新于 <span id="generated">—</span>。</p>
+  <p><a href="https://github.com/xikijinise/cn-company-wiki">GitHub 源码</a></p>
+</footer>
+<script src="https://cdn.jsdelivr.net/npm/echarts@5.5.1/dist/echarts.min.js"></script>
+<script src="common.js"></script>
+<script src="province.js"></script>
+</body>
+</html>

@@ -20,7 +20,7 @@
 |---|---|
 | `scripts/fetch_companies.py` | 从 Wikidata（经 QLever）抓取，输出 `data/companies.json` |
 | `data/companies.json` | 数据文件（每周由 GitHub Actions 自动刷新并提交） |
-| `site/` | 纯静态前端，无构建步骤 |
+| `site/` | 纯静态前端，无构建步骤：列表页、省份地图（`map.html`）、省份分析（`province.html`） |
 | `.github/workflows/deploy.yml` | 每周一抓取数据并部署到 GitHub Pages |
 
 ## 本地运行

@@ -5,9 +5,9 @@
 
 ## 结构
 
-- `scripts/fetch_companies.py` — 从 Wikidata 抓取，写 `data/companies.json`。只依赖 `requests`。
+- `scripts/fetch_companies.py` — 从 Wikidata 抓取（QLever 偶尔输出未转义控制字符，故用 `json.loads(strict=False)`），写 `data/companies.json`。只依赖 `requests`。
 - `data/companies.json` — 数据文件，提交在仓库里；每周由 Actions 刷新并以 `github-actions[bot]` 身份提交回来（改代码前先 `git pull`）。
-- `site/` — 纯静态前端（index.html / app.js / style.css），无构建、无框架。部署时 `data/` 被复制到站点根目录下，本地预览时 app.js 会回退读取 `../data/`。
+- `site/` — 纯静态前端，无构建。`index.html`+`app.js` 列表页；`map.html`+`map.js` 省份地图；`province.html`+`province.js` 省份分析（`?p=广东省`）；`common.js` 三页共用（esc / loadData / row / 配色）。地图和图表用 ECharts（jsDelivr CDN，钉死 5.5.1），省界 GeoJSON 在 `site/geo/china.json`（DataV.GeoAtlas，坐标保留 3 位小数），省名与数据的 `province` 字段一致。部署时 `data/` 被复制到站点根目录下，本地预览时 app.js 会回退读取 `../data/`。
 - `.github/workflows/deploy.yml` — push 到 main 时直接部署；每周一 03:17 UTC 或手动触发（`refresh`）时先重新抓取再部署。
 
 ## 常用命令
@@ -34,12 +34,15 @@ gh workflow run deploy.yml -f refresh=true # 在 CI 上重新抓取并部署
 {"generated": "ISO8601", "count": 8800, "companies": [
   {"id": "Q860580", "type": "企业", "zh": "华为", "en": "Huawei",
    "zhwiki": "url|null", "enwiki": "url|null", "website": "url|null",
-   "hq": "深圳市 | 北京市 / 香港 | null", "industry": ["…"],
+   "hq": "深圳市 | 北京市 / 香港 | null", "province": "广东省 | null", "city": "深圳市 | null",
+   "industry": ["…"],
    "founded": 1987, "dissolved": null, "listed": false}
 ]}
 ```
 
 ## 已知数据问题（来自 Wikidata 本身）
+
+- `province` / `city` 由总部 P159（没有则用 P131）沿 P131* 上溯到 31 个省级行政区 / 地级市（Q748149）得出；约一半条目两者都没填，不进地图。直辖市的 city 即自身。
 
 - 约 150 条无中文标签。
 - 部分条目总部同时填了区和市（「北京市 / 西城区」），或填了无意义的值（「中华人民共和国」「街道地址」）。

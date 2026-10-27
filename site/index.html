@@ -13,6 +13,7 @@
   <div class="wrap">
     <h1>中国企业维基索引</h1>
     <p class="lede">维基百科有条目的中国大陆企业 · 官网 / 中文维基 / English Wikipedia</p>
+    <nav class="tabs"><a href="./" aria-current="page">列表</a><a href="map.html">地图</a></nav>
     <p class="stats" id="stats">正在加载数据…</p>
   </div>
 </header>
@@ -27,6 +28,7 @@
         <option value="all">全部</option>
       </select>
       <select id="type" aria-label="类型"><option value="">全部类型</option></select>
+      <select id="prov" aria-label="省份"><option value="">全部省份</option></select>
       <select id="industry" aria-label="行业"><option value="">全部行业</option></select>
       <select id="sort" aria-label="排序">
         <option value="name">按名称</option>
@@ -49,6 +51,7 @@
   数据更新于 <span id="generated">—</span>。信息有误？请直接在 Wikidata 修改，下周自动同步。</p>
   <p><a href="https://github.com/xikijinise/cn-company-wiki">GitHub 源码</a></p>
 </footer>
+<script src="common.js"></script>
 <script src="app.js"></script>
 </body>
 </html>

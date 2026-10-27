@@ -100,6 +100,31 @@ SELECT DISTINCT ?c WHERE {
   }
 }""" % COMPANIES
 
+# 省级行政区（大陆 31 个），名称与前端地图 GeoJSON 的 name 一致
+PROVINCES = {
+    "Q956": "北京市", "Q11736": "天津市", "Q21208": "河北省", "Q46913": "山西省", "Q41079": "内蒙古自治区",
+    "Q43934": "辽宁省", "Q45208": "吉林省", "Q19206": "黑龙江省", "Q8686": "上海市", "Q16963": "江苏省",
+    "Q16967": "浙江省", "Q40956": "安徽省", "Q41705": "福建省", "Q57052": "江西省", "Q43407": "山东省",
+    "Q43684": "河南省", "Q46862": "湖北省", "Q45761": "湖南省", "Q15175": "广东省", "Q15176": "广西壮族自治区",
+    "Q42200": "海南省", "Q11725": "重庆市", "Q19770": "四川省", "Q47097": "贵州省", "Q43194": "云南省",
+    "Q17269": "西藏自治区", "Q47974": "陕西省", "Q42392": "甘肃省", "Q45833": "青海省", "Q57448": "宁夏回族自治区",
+    "Q34800": "新疆维吾尔自治区",
+}
+MUNICIPALITIES = {"Q956", "Q11736", "Q8686", "Q11725"}
+
+# 由总部（P159）沿 P131* 上溯到省级和地级市（Q748149）；没填总部的退而用条目自身的 P131
+LOCATION = PREFIXES + """
+SELECT DISTINCT ?c ?src ?loc ?prov ?city ?cityLabel WHERE {
+  { %s }
+  { ?c wdt:P159 ?loc BIND("hq" AS ?src) } UNION { ?c wdt:P131 ?loc BIND("in" AS ?src) }
+  VALUES ?prov { %s }
+  ?loc wdt:P131* ?prov .
+  OPTIONAL {
+    ?loc wdt:P131* ?city . ?city wdt:P31 wd:Q748149 .
+    ?city rdfs:label ?cityLabel FILTER(LANG(?cityLabel) IN ("zh-cn", "zh-hans", "zh"))
+  }
+}""" % (COMPANIES, " ".join("wd:" + q for q in PROVINCES))
+
 ZH_ORDER = ("zh-cn", "zh-hans", "zh")
 
 
@@ -110,7 +135,8 @@ def sparql(query: str) -> list[dict]:
             try:
                 r = requests.post(ep, data={"query": query}, headers=headers, timeout=300)
                 if r.status_code == 200:
-                    return r.json()["results"]["bindings"]
+                    # QLever 偶尔在字符串里输出未转义的控制字符，strict=False 容忍之
+                    return json.loads(r.text, strict=False)["results"]["bindings"]
                 print(f"  {ep} -> HTTP {r.status_code}: {r.text[:200]}", file=sys.stderr)
             except (requests.RequestException, ValueError) as e:
                 print(f"  {ep} -> {type(e).__name__}: {e}", file=sys.stderr)
@@ -167,6 +193,16 @@ def main() -> int:
         if c not in cats or priority.index(cat) < priority.index(cats[c]):
             cats[c] = cat
 
+    print("Querying provinces/cities…", file=sys.stderr)
+    # locs[c][src][loc] = (province, city)
+    locs: dict[str, dict[str, dict[str, tuple[str, str | None]]]] = {}
+    for r in sparql(LOCATION):
+        c, src, loc, prov = qid(r["c"]["value"]), r["src"]["value"], qid(r["loc"]["value"]), qid(r["prov"]["value"])
+        city = PROVINCES[prov] if prov in MUNICIPALITIES else r.get("cityLabel", {}).get("value")
+        slot = locs.setdefault(c, {}).setdefault(src, {})
+        if loc not in slot or (slot[loc][1] is None and city):
+            slot[loc] = (PROVINCES[prov], city)
+
     acc: dict[str, dict] = {}
     for r in rows:
         g = lambda k: r.get(k, {}).get("value")
@@ -205,6 +241,17 @@ def main() -> int:
             name = pick_any(labels)
             if name and name not in hqs:
                 hqs.append(name)
+        # 省份取显示顺序中第一个能定位的总部，没有则用 P131
+        province = city = None
+        found = locs.get(c, {})
+        hq_order = sorted(d["hq"], key=lambda q: pick_any(d["hq"][q]) or q)
+        for src, order in (("hq", hq_order), ("in", sorted(found.get("in", {})))):
+            for loc in order:
+                if loc in found.get(src, {}):
+                    province, city = found[src][loc]
+                    break
+            if province:
+                break
         companies.append({
             "id": c,
             "type": CATEGORIES[cats[c]] if c in cats else "企业",
@@ -215,6 +262,8 @@ def main() -> int:
             "website": pick_site(d["sites"]),
             # 多个总部（如「北京市 / 香港」）合并显示，最多两个
             "hq": " / ".join(sorted(hqs)[:2]) or None,
+            "province": province,
+            "city": city,
             "industry": sorted(industry)[:3],
             "founded": d["inception"],
             "dissolved": d["dissolved"],
@@ -230,6 +279,7 @@ def main() -> int:
         "website": sum(1 for x in companies if x["website"]),
         "dissolved": sum(1 for x in companies if x["dissolved"] is not None),
         "listed": sum(1 for x in companies if x["listed"]),
+        "province": sum(1 for x in companies if x["province"]),
     }
     print("Stats: " + ", ".join(f"{k}={v}" for k, v in stats.items()), file=sys.stderr)
 

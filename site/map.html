@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>中国企业地图 · 中国企业维基索引</title>
+<meta name="description" content="按省份查看维基百科有条目的中国大陆企业分布。">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='7' fill='%23b42318'/><text x='16' y='23' font-size='19' text-anchor='middle' fill='white' font-family='sans-serif'>企</text></svg>">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header class="top">
+  <div class="wrap">
+    <h1>中国企业维基索引</h1>
+    <p class="lede">按省份看企业分布 · 鼠标悬停看概况，点击进入省份分析</p>
+    <nav class="tabs"><a href="./">列表</a><a href="map.html" aria-current="page">地图</a></nav>
+    <p class="stats" id="stats">正在加载数据…</p>
+  </div>
+</header>
+
+<main class="wrap mapgrid">
+  <section class="card mapcard" aria-label="中国大陆省级行政区企业分布图">
+    <div id="map" class="map"></div>
+    <p class="hint" id="hint">按总部（或所在地）所在省份统计；港澳台不在收录范围。</p>
+  </section>
+  <aside class="card rank" aria-label="省份排行">
+    <h2>省份排行</h2>
+    <ol id="rank"></ol>
+  </aside>
+</main>
+
+<footer class="wrap foot">
+  <p>数据来自 <a href="https://www.wikidata.org/">Wikidata</a>（CC0），省份由总部（P159）或所在行政区（P131）逐级上溯得出，两者都没填的条目不计入地图。
+  数据更新于 <span id="generated">—</span>。地图边界来自阿里云 DataV.GeoAtlas。</p>
+  <p><a href="https://github.com/xikijinise/cn-company-wiki">GitHub 源码</a></p>
+</footer>
+<script src="https://cdn.jsdelivr.net/npm/echarts@5.5.1/dist/echarts.min.js"></script>
+<script src="common.js"></script>
+<script src="map.js"></script>
+</body>
+</html>
