@@ -10,6 +10,17 @@ let shown = 0;
 let filter = null; // { kind, value }
 const charts = {};
 
+// 省级行政区划代码，对应 geo/<adcode>.json（地级市边界）；直辖市下面是区县，不画城市地图
+const ADCODE = {
+  "河北省": 130000, "山西省": 140000, "内蒙古自治区": 150000, "辽宁省": 210000, "吉林省": 220000,
+  "黑龙江省": 230000, "江苏省": 320000, "浙江省": 330000, "安徽省": 340000, "福建省": 350000,
+  "江西省": 360000, "山东省": 370000, "河南省": 410000, "湖北省": 420000, "湖南省": 430000,
+  "广东省": 440000, "广西壮族自治区": 450000, "海南省": 460000, "四川省": 510000, "贵州省": 520000,
+  "云南省": 530000, "西藏自治区": 540000, "陕西省": 610000, "甘肃省": 620000, "青海省": 630000,
+  "宁夏回族自治区": 640000, "新疆维吾尔自治区": 650000,
+};
+const MAP_STEPS = [1, 3, 10, 30, 100];
+
 const decade = (y) => (y == null ? null : y < 1900 ? "1900 前" : `${Math.floor(y / 10) * 10}s`);
 const matches = (c, f) => !f ||
   (f.kind === "city" ? (c.city || "未知") === f.value :
@@ -67,8 +78,57 @@ function hbar(pairs, kind, t) {
 
 const isActive = (kind, value) => filter && filter.kind === kind && filter.value === value;
 
+function renderCityMap(t) {
+  if (!charts.map) return;
+  const by = new Map();
+  for (const c of items) if (c.city) (by.get(c.city) || by.set(c.city, []).get(c.city)).push(c);
+  const info = new Map([...by].map(([name, list]) => [name, {
+    total: list.length,
+    listed: list.filter((c) => c.listed).length,
+    industries: countBy(list, (c) => c.industry).slice(0, 3),
+    top: list.slice(0, 3).map((c) => c._name), // items 已按上市优先排序
+  }]));
+  const pieces = MAP_STEPS.map((min, i) => ({
+    min, max: MAP_STEPS[i + 1] ? MAP_STEPS[i + 1] - 1 : undefined,
+    label: MAP_STEPS[i + 1] ? (min === MAP_STEPS[i + 1] - 1 ? `${min}` : `${min}–${MAP_STEPS[i + 1] - 1}`) : `${min}+`,
+    color: mix(t.soft, t.accent, (i + 1) / MAP_STEPS.length),
+  }));
+  charts.map.setOption({
+    tooltip: {
+      ...base(t).tooltip, trigger: "item", confine: true,
+      formatter: (p) => {
+        const s = info.get(p.name);
+        if (!s) return `<b>${esc(p.name)}</b><br><span class="tt-muted">暂无收录</span>`;
+        const ind = s.industries.map(([k, n]) => `${esc(k)} ${n}`).join("、") || "—";
+        return `<div class="tt"><b>${esc(p.name)}</b><div class="tt-big">${s.total} <small>家</small></div>` +
+          `<div>上市 ${s.listed}</div><div><span class="tt-muted">代表</span> ${s.top.map(esc).join("、")}</div>` +
+          `<div><span class="tt-muted">热门行业</span> ${ind}</div>` +
+          `<div class="tt-cta">${isActive("city", p.name) ? "点击取消筛选" : "点击筛选名单 ↓"}</div></div>`;
+      },
+    },
+    visualMap: {
+      type: "piecewise", pieces, left: 0, bottom: 0, itemWidth: 14, itemHeight: 10, itemGap: 4,
+      textStyle: { color: t.muted, fontSize: 11 }, outOfRange: { color: t.chip },
+    },
+    series: [{
+      type: "map", map: "province", roam: false, selectedMode: false,
+      layoutCenter: ["50%", "50%"], layoutSize: "95%",
+      itemStyle: { areaColor: t.chip, borderColor: t.surface, borderWidth: 0.8 },
+      // 窄屏城市名挤在一起，只在悬停时显示
+      label: { show: $("c-map").clientWidth >= 600, color: t.muted, fontSize: 10, formatter: (p) => (info.has(p.name) ? p.name : "") },
+      emphasis: { label: { show: true, color: t.text, fontWeight: 600 }, itemStyle: { areaColor: t.accent } },
+      data: [...info].map(([name, s]) => ({
+        name, value: s.total,
+        // 当前筛选的城市描粗边框
+        itemStyle: isActive("city", name) ? { borderColor: t.text, borderWidth: 2 } : undefined,
+      })),
+    }],
+  }, true);
+}
+
 function renderCharts() {
   const t = themeColors();
+  renderCityMap(t);
   const top = (pairs, n) => pairs.slice(0, n);
 
   hbar(top(countBy(items, (c) => c.city || "未知"), 12), "city", t);
@@ -161,6 +221,16 @@ async function init() {
     $("toList").href = "./#" + new URLSearchParams({ prov: name, status: "all" });
     renderKpis(rank);
 
+    const code = ADCODE[name];
+    if (code) {
+      try {
+        const geo = await fetch(`geo/${code}.json`).then((r) => r.json());
+        echarts.registerMap("province", geo);
+        $("mapcard").hidden = false;
+        charts.map = echarts.init($("c-map"));
+        charts.map.on("click", (p) => { if (items.some((c) => c.city === p.name)) setFilter({ kind: "city", value: p.name }); });
+      } catch { /* 没有边界数据就只显示图表 */ }
+    }
     charts.city = echarts.init($("c-city"));
     charts.type = echarts.init($("c-type"));
     charts.industry = echarts.init($("c-ind"));

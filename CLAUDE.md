@@ -7,7 +7,7 @@
 
 - `scripts/fetch_companies.py` — 从 Wikidata 抓取（QLever 偶尔输出未转义控制字符，故用 `json.loads(strict=False)`），写 `data/companies.json`。只依赖 `requests`。
 - `data/companies.json` — 数据文件，提交在仓库里；每周由 Actions 刷新并以 `github-actions[bot]` 身份提交回来（改代码前先 `git pull`）。
-- `site/` — 纯静态前端，无构建。`index.html`+`app.js` 列表页；`map.html`+`map.js` 省份地图；`province.html`+`province.js` 省份分析（`?p=广东省`）；`common.js` 三页共用（esc / loadData / row / 配色）。地图和图表用 ECharts（jsDelivr CDN，钉死 5.5.1），省界 GeoJSON 在 `site/geo/china.json`（DataV.GeoAtlas，坐标保留 3 位小数），省名与数据的 `province` 字段一致。部署时 `data/` 被复制到站点根目录下，本地预览时 app.js 会回退读取 `../data/`。
+- `site/` — 纯静态前端，无构建。`index.html`+`app.js` 列表页；`map.html`+`map.js` 省份地图；`province.html`+`province.js` 省份分析（`?p=广东省`）；`common.js` 三页共用（esc / loadData / row / 配色）。地图和图表用 ECharts（jsDelivr CDN，钉死 5.5.1），省界 GeoJSON 在 `site/geo/china.json`，各省地级市边界在 `site/geo/<adcode>.json`（直辖市没有；均来自 DataV.GeoAtlas，坐标保留 3 位小数），名称与数据的 `province` / `city` 字段一致（city 取简体标签，否则对不上）。部署时 `data/` 被复制到站点根目录下，本地预览时 app.js 会回退读取 `../data/`。
 - `.github/workflows/deploy.yml` — push 到 main 时直接部署；每周一 03:17 UTC 或手动触发（`refresh`）时先重新抓取再部署。在非 main 分支手动触发只抓取并把数据提交回该分支，不部署（`gh workflow run deploy.yml --ref <分支> -f refresh=true`），适合改了抓取脚本后试跑。
 
 ## 常用命令

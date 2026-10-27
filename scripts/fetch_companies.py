@@ -370,14 +370,17 @@ def main() -> int:
             cats[c] = cat
 
     print("Querying provinces/cities…", file=sys.stderr)
-    # locs[c][src][loc] = (province, city)
-    locs: dict[str, dict[str, dict[str, tuple[str, str | None]]]] = {}
+    # locs[c][src][loc] = (province, city, 标签语言优先级)
+    locs: dict[str, dict[str, dict[str, tuple[str, str | None, int]]]] = {}
     for r in sparql(LOCATION):
         c, src, loc, prov = qid(r["c"]["value"]), r["src"]["value"], qid(r["loc"]["value"]), qid(r["prov"]["value"])
-        city = PROVINCES[prov] if prov in MUNICIPALITIES else r.get("cityLabel", {}).get("value")
+        label = r.get("cityLabel", {})
+        city = PROVINCES[prov] if prov in MUNICIPALITIES else label.get("value")
+        # 同一地点可能返回多种中文标签，取简体优先（zh 常是繁体，如「貴陽市」）
+        rank = -1 if prov in MUNICIPALITIES else ZH_ORDER.index(label["xml:lang"]) if city else len(ZH_ORDER)
         slot = locs.setdefault(c, {}).setdefault(src, {})
-        if loc not in slot or (slot[loc][1] is None and city):
-            slot[loc] = (PROVINCES[prov], city)
+        if loc not in slot or rank < slot[loc][2]:
+            slot[loc] = (PROVINCES[prov], city, rank)
 
     acc: dict[str, dict] = {}
     for r in rows:
@@ -437,7 +440,7 @@ def main() -> int:
         for src, order in (("hq", hq_order), ("in", sorted(found.get("in", {})))):
             for loc in order:
                 if loc in found.get(src, {}):
-                    province, city = found[src][loc]
+                    province, city, _ = found[src][loc]
                     break
             if province:
                 break
