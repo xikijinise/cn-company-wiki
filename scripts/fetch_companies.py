@@ -408,12 +408,13 @@ def main() -> int:
             print(f"  not an organisation: {c} {pick_any(acc.pop(c)['labels'])} ({'/'.join(sorted(not_org[c]))})",
                   file=sys.stderr)
 
-    # Wikidata 没填官网的，退而读维基百科信息框（先中文后英文）
+    # Wikidata 没填官网、或只有英文版官网的，退而读维基百科信息框（先中文后英文），不像英文版的才替换
     website = {c: pick_site(sites.get(c, {})) for c in acc}
+    englishy = lambda u: site_key(u)[3]
     for wiki in ("zhwiki", "enwiki"):
-        todo = {c: d[wiki] for c, d in acc.items() if not website[c] and d[wiki]}
+        todo = {c: d[wiki] for c, d in acc.items() if (not website[c] or englishy(website[c])) and d[wiki]}
         print(f"Reading {len(todo)} {wiki} infoboxes for missing websites…", file=sys.stderr)
-        got = wiki_sites(todo)
+        got = {c: u for c, u in wiki_sites(todo).items() if not website[c] or not englishy(u)}
         print(f"  {len(got)} found", file=sys.stderr)
         website.update(got)
 
