@@ -50,18 +50,22 @@ jobs:
           git add data/companies.json
           git diff --cached --quiet || (git commit -m "data: weekly Wikidata refresh" && git push)
 
+      # 只有 main 才部署；在其他分支手动触发只用来试跑抓取（结果提交回该分支）
       - name: Assemble site
+        if: github.ref == 'refs/heads/main'
         run: |
           mkdir -p _site/data
           cp -r site/. _site/
           cp data/companies.json _site/data/
 
       - uses: actions/upload-pages-artifact@v3
+        if: github.ref == 'refs/heads/main'
         with:
           path: _site
 
   deploy:
     needs: build
+    if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     environment:
       name: github-pages
