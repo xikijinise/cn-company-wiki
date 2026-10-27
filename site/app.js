@@ -3,7 +3,7 @@
 const PAGE = 60;
 const $ = (id) => document.getElementById(id);
 const els = {
-  q: $("q"), status: $("status"), industry: $("industry"), sort: $("sort"),
+  q: $("q"), status: $("status"), type: $("type"), industry: $("industry"), sort: $("sort"),
   listed: $("listed"), hasSite: $("hasSite"), hasEn: $("hasEn"),
   list: $("list"), count: $("count"), more: $("more"), stats: $("stats"), generated: $("generated"),
 };
@@ -33,6 +33,13 @@ function prepare(c) {
   return c;
 }
 
+function fillTypes() {
+  const counts = new Map();
+  for (const c of all) counts.set(c.type, (counts.get(c.type) || 0) + 1);
+  els.type.insertAdjacentHTML("beforeend", [...counts].sort((a, b) => b[1] - a[1])
+    .map(([t, n]) => `<option value="${esc(t)}">${esc(t)}（${n.toLocaleString()}）</option>`).join(""));
+}
+
 function fillIndustries() {
   const counts = new Map();
   for (const c of all) for (const i of c.industry || []) counts.set(i, (counts.get(i) || 0) + 1);
@@ -45,6 +52,7 @@ function readState() {
   const p = new URLSearchParams(location.hash.slice(1));
   els.q.value = p.get("q") || "";
   els.status.value = p.get("status") || "active";
+  els.type.value = p.get("type") || "";
   els.industry.value = p.get("industry") || "";
   els.sort.value = p.get("sort") || "name";
   els.listed.checked = p.has("listed");
@@ -56,6 +64,7 @@ function writeState() {
   const p = new URLSearchParams();
   if (els.q.value.trim()) p.set("q", els.q.value.trim());
   if (els.status.value !== "active") p.set("status", els.status.value);
+  if (els.type.value) p.set("type", els.type.value);
   if (els.industry.value) p.set("industry", els.industry.value);
   if (els.sort.value !== "name") p.set("sort", els.sort.value);
   if (els.listed.checked) p.set("listed", "");
@@ -69,8 +78,10 @@ function apply() {
   const terms = els.q.value.trim().toLowerCase().split(/\s+/).filter(Boolean);
   const status = els.status.value;
   const ind = els.industry.value;
+  const type = els.type.value;
   filtered = all.filter((c) =>
     (status === "all" || (status === "active") === (c.dissolved == null)) &&
+    (!type || c.type === type) &&
     (!ind || (c.industry || []).includes(ind)) &&
     (!els.listed.checked || c.listed) &&
     (!els.hasSite.checked || c.website) &&
@@ -93,7 +104,8 @@ function apply() {
 function row(c) {
   const name = c.zh || c.en || c.id;
   const en = c.zh && c.en ? `<span class="en">${esc(c.en)}</span>` : "";
-  const tags = (c.listed ? `<span class="tag listed">上市</span>` : "") +
+  const tags = (c.type && c.type !== "企业" ? `<span class="tag kind">${esc(c.type)}</span>` : "") +
+    (c.listed ? `<span class="tag listed">上市</span>` : "") +
     (c.dissolved != null ? `<span class="tag gone">已解散 ${c.dissolved}</span>` : "");
   const meta = [
     c.hq && esc(c.hq),
@@ -123,7 +135,7 @@ function renderMore() {
 function renderStats(data) {
   const n = (f) => all.filter(f).length.toLocaleString();
   els.stats.innerHTML =
-    `收录 <b>${all.length.toLocaleString()}</b> 家 · 存续 <b>${n((c) => c.dissolved == null)}</b> · ` +
+    `收录 <b>${all.length.toLocaleString()}</b> 家 · 企业 <b>${n((c) => c.type === "企业")}</b> · 存续 <b>${n((c) => c.dissolved == null)}</b> · ` +
     `有官网 <b>${n((c) => c.website)}</b> · 上市 <b>${n((c) => c.listed)}</b> · 有英文维基 <b>${n((c) => c.enwiki)}</b>`;
   els.generated.textContent = data.generated ? new Date(data.generated).toLocaleDateString("zh-CN") : "—";
 }
@@ -133,6 +145,7 @@ async function init() {
     const data = await loadData();
     all = data.companies.map(prepare).sort((a, b) => a._name.localeCompare(b._name, "zh-CN"));
     renderStats(data);
+    fillTypes();
     fillIndustries();
     readState();
     apply();
@@ -142,7 +155,7 @@ async function init() {
 
   let t;
   els.q.addEventListener("input", () => { clearTimeout(t); t = setTimeout(apply, 150); });
-  for (const el of [els.status, els.industry, els.sort, els.listed, els.hasSite, els.hasEn]) el.addEventListener("change", apply);
+  for (const el of [els.status, els.type, els.industry, els.sort, els.listed, els.hasSite, els.hasEn]) el.addEventListener("change", apply);
   els.more.addEventListener("click", renderMore);
 }
 

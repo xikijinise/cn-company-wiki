@@ -26,6 +26,7 @@
         <option value="dissolved">已解散</option>
         <option value="all">全部</option>
       </select>
+      <select id="type" aria-label="类型"><option value="">全部类型</option></select>
       <select id="industry" aria-label="行业"><option value="">全部行业</option></select>
       <select id="sort" aria-label="排序">
         <option value="name">按名称</option>
@@ -44,7 +45,7 @@
 </main>
 
 <footer class="wrap foot">
-  <p>数据来自 <a href="https://www.wikidata.org/">Wikidata</a>（CC0），收录条件：国家为中华人民共和国、总部不在港澳、且有中文或英文维基百科条目。
+  <p>数据来自 <a href="https://www.wikidata.org/">Wikidata</a>（CC0），收录条件：属于 Wikidata「企业」类（含学校等机构）、国家为中华人民共和国、总部不全在港澳、且有中文或英文维基百科条目。
   数据更新于 <span id="generated">—</span>。信息有误？请直接在 Wikidata 修改，下周自动同步。</p>
   <p><a href="https://github.com/xikijinise/cn-company-wiki">GitHub 源码</a></p>
 </footer>

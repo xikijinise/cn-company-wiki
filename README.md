@@ -7,16 +7,18 @@
 
 ## 收录条件
 
-- 是「企业」(Q4830453) 或其任意子类的实例
-- 国家 (P17) 为中华人民共和国，且总部 (P159) 不在香港、澳门
+- 是「企业」(Q4830453) 或其任意子类的实例。Wikidata 的这棵分类树也包含学校、图书馆等机构，一并收录，并按类型（企业 / 教育机构 / 图书馆 / …）标注，网页上可筛选
+- 国家 (P17) 为中华人民共和国；总部 (P159) **全部**在香港、澳门的排除，同时登记了大陆总部的（如「北京 + 香港」）保留
 - 有中文或英文维基百科条目
-- 已解散的企业保留并标注
+- 已解散的保留并标注
+
+数据通过 [QLever](https://qlever.dev) 的 Wikidata SPARQL 端点查询（官方 query.wikidata.org 端点 60 秒超时，跑不完全量遍历），全量抓取约 1 分钟。
 
 ## 结构
 
 | 路径 | 说明 |
 |---|---|
-| `scripts/fetch_companies.py` | 从 Wikidata SPARQL 分批抓取，输出 `data/companies.json` |
+| `scripts/fetch_companies.py` | 从 Wikidata（经 QLever）抓取，输出 `data/companies.json` |
 | `data/companies.json` | 数据文件（每周由 GitHub Actions 自动刷新并提交） |
 | `site/` | 纯静态前端，无构建步骤 |
 | `.github/workflows/deploy.yml` | 每周一抓取数据并部署到 GitHub Pages |

@@ -37,7 +37,7 @@ jobs:
       - name: Fetch from Wikidata
         if: github.event_name == 'schedule' || inputs.refresh
         continue-on-error: true
-        timeout-minutes: 60
+        timeout-minutes: 30
         run: |
           pip install -r scripts/requirements.txt
           python scripts/fetch_companies.py
