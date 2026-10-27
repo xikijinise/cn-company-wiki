@@ -46,12 +46,18 @@ a { color: var(--accent); }
 /* 往下滚时收起筛选栏，往上滚时再出现（app.js 切换） */
 .controls.tucked { transform: translateY(calc(-100% - 1px)); }
 @media (prefers-reduced-motion: reduce) { .controls { transition: none; } }
+.searchrow { display: flex; gap: 8px; }
 #q {
-  width: 100%; padding: 11px 14px; font-size: 16px;
+  flex: 1; min-width: 0; width: 100%; padding: 11px 14px; font-size: 16px;
   border: 1px solid var(--line); border-radius: 10px;
   background: var(--surface); color: var(--text); outline: none;
 }
 #q:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+.filterbtn {
+  display: none; flex: none; padding: 0 14px; font: inherit; font-size: 15px; cursor: pointer;
+  border: 1px solid var(--line); border-radius: 10px; background: var(--surface); color: var(--text);
+}
+.filterbtn.active { border-color: var(--accent); color: var(--accent); background: var(--accent-soft); }
 .filters { display: flex; flex-wrap: wrap; gap: 8px 14px; align-items: center; margin-top: 10px; font-size: 14px; }
 .filters select {
   padding: 6px 8px; border: 1px solid var(--line); border-radius: 8px;
@@ -160,6 +166,10 @@ a { color: var(--accent); }
 }
 
 @media (max-width: 640px) {
+  /* 手机上筛选项默认折叠，只留一行搜索框 */
+  .controls { padding: 10px 0 8px; }
+  .filterbtn { display: block; }
+  .controls:not(.open) .filters { display: none; }
   .map { height: 380px; }
   .chart.citymap { height: 340px; }
   .rank ol { columns: 1; }

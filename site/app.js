@@ -5,7 +5,7 @@ const $ = (id) => document.getElementById(id);
 const els = {
   q: $("q"), status: $("status"), type: $("type"), prov: $("prov"), industry: $("industry"), sort: $("sort"),
   listed: $("listed"), hasSite: $("hasSite"), hasEn: $("hasEn"), hmt: $("hmt"),
-  controls: $("controls"), list: $("list"), count: $("count"), more: $("more"), stats: $("stats"), generated: $("generated"),
+  controls: $("controls"), filters: $("filters"), filterBtn: $("filterBtn"), list: $("list"), count: $("count"), more: $("more"), stats: $("stats"), generated: $("generated"),
 };
 
 let all = [];
@@ -90,6 +90,7 @@ function apply() {
   }
 
   writeState();
+  renderFilterBtn();
   els.list.innerHTML = "";
   shown = 0;
   renderMore();
@@ -140,6 +141,19 @@ async function init() {
     apply();
   });
 }
+
+// 手机上筛选项折叠在「筛选」按钮后面，按钮上显示已启用的筛选条件数
+function renderFilterBtn() {
+  const n = [els.status.value !== "active", els.type.value, els.prov.value, els.industry.value,
+    els.sort.value !== "name", els.listed.checked, els.hasSite.checked, els.hasEn.checked, els.hmt.checked].filter(Boolean).length;
+  els.filterBtn.textContent = n ? `筛选 · ${n}` : "筛选";
+  els.filterBtn.classList.toggle("active", n > 0);
+}
+
+els.filterBtn.addEventListener("click", () => {
+  const open = els.controls.classList.toggle("open");
+  els.filterBtn.setAttribute("aria-expanded", open);
+});
 
 // 筛选栏吸顶后：往下滚收起、往上滚出现；正在输入搜索词时不收起
 function autoHideControls() {

@@ -20,8 +20,11 @@
 
 <main class="wrap">
   <section class="controls" id="controls" aria-label="搜索与筛选">
-    <input id="q" type="search" placeholder="搜索企业名、英文名、总部或行业…" autocomplete="off" aria-label="搜索">
-    <div class="filters">
+    <div class="searchrow">
+      <input id="q" type="search" placeholder="搜索名称、总部或行业…" autocomplete="off" aria-label="搜索">
+      <button type="button" class="filterbtn" id="filterBtn" aria-expanded="false" aria-controls="filters">筛选</button>
+    </div>
+    <div class="filters" id="filters">
       <select id="status" aria-label="存续状态">
         <option value="active">存续</option>
         <option value="dissolved">已解散</option>
