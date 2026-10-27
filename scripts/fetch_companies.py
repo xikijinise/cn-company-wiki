@@ -212,8 +212,8 @@ ZH_LANGS = {"Q7850", "Q727694", "Q13414913", "Q18130932", "Q9192"}
 NOT_OFFICIAL = re.compile(
     r"(^|\.)(archive\.org|archive\.today|archive\.ph|weibo\.com|weibo\.cn|douban\.com|facebook\.com|twitter\.com|x\.com"
     r"|instagram\.com|youtube\.com|linkedin\.com|baike\.baidu\.com|wikipedia\.org|worlduc\.com|mp\.weixin\.qq\.com)$")
-# 英文版官网：english.xxx / en.xxx 子域名，或 /en、/english、english.htm 之类的路径
-ENGLISH = re.compile(r"(^|[./_-])(en|eng|english)([./_-]|$)", re.I)
+# 英文版官网：english.xxx / en.xxx 子域名，/en、/english、english.htm 之类的路径，或 ?lang=en 之类的参数
+ENGLISH = re.compile(r"(^|[./_=-])(en|eng|english)([./_&=-]|$)", re.I)
 
 
 def clean_url(u: str) -> str | None:
@@ -234,7 +234,7 @@ def site_key(u: str, preferred: bool = False, langs: frozenset[str] = frozenset(
     parsed = urlparse(u)
     host = (parsed.hostname or "").lower()
     lang = 0 if langs & ZH_LANGS else (2 if langs else 1)
-    english = bool(ENGLISH.search(host.split(".", 1)[0]) or ENGLISH.search(parsed.path + "?" + parsed.query))
+    english = bool(ENGLISH.search(host.split(".", 1)[0]) or ENGLISH.search(parsed.path) or ENGLISH.search(parsed.query))
     return (ended, bool(NOT_OFFICIAL.search(host)), lang, english, not preferred,
             not u.startswith("https://"), len(u), u)
 
