@@ -46,5 +46,6 @@ gh workflow run deploy.yml -f refresh=true # 在 CI 上重新抓取并部署
 
 ## 约定
 
-- 提交身份已在本仓库配置为 `xikijinise` + GitHub noreply 邮箱，不要用个人邮箱。
+- 提交身份用 `xikijinise` + GitHub noreply 邮箱（`<用户 id>+xikijinise@users.noreply.github.com`，id 可用 `gh api user -q .id` 查），不要用个人邮箱。该配置只存在本地 `.git/config`，新克隆的环境需要重新设置。
+- 云端环境如果限制外网，抓取脚本需要能访问 `qlever.dev`；访问不了时不要动 `data/companies.json`，改用 `gh workflow run deploy.yml -f refresh=true` 在 CI 上刷新。
 - 前端文案用简体中文。
