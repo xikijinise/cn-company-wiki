@@ -51,11 +51,14 @@ CATEGORIES = {
     "Q431289": "品牌",
 }
 
-# 国家为中华人民共和国、台湾、香港、澳门的企业；港澳台条目带 hmt 标记，前端默认隐藏
+# 国家为中华人民共和国、台湾、香港、澳门的企业；港澳台条目带 hmt 标记，前端默认隐藏。
+# 没填国家（P17）的，看总部 / 所在行政区的国家（如新建条目只填了总部）
 COMPANIES = """
 SELECT DISTINCT ?c WHERE {
-  ?c wdt:P17 ?country ; wdt:P31/wdt:P279* wd:Q4830453 .
+  ?c wdt:P31/wdt:P279* wd:Q4830453 .
   VALUES ?country { wd:Q148 wd:Q865 wd:Q8646 wd:Q14773 }
+  { ?c wdt:P17 ?country }
+  UNION { ?c wdt:P159|wdt:P131 ?l . ?l wdt:P17 ?country . FILTER NOT EXISTS { ?c wdt:P17 ?any } }
   ?a schema:about ?c ; schema:isPartOf ?w .
   VALUES ?w { <https://zh.wikipedia.org/> <https://en.wikipedia.org/> }
 }"""
@@ -125,13 +128,15 @@ SELECT ?c ?site ?rank ?lang ?end WHERE {
   OPTIONAL { ?st pq:P582 ?end }
 }""" % COMPANIES
 
-# 港澳判定用到的位置：总部 P159、所在行政区 P131、国家 P17，以及其中位于港澳的那些
+# 港澳判定用到的位置：总部 P159、所在行政区 P131、国家 P17（没填的用总部 / 所在地的国家代替），以及其中位于港澳的那些
 SAR = {"Q8646", "Q14773"}
 PLACES = PREFIXES + """
 SELECT DISTINCT ?c ?src ?loc ?sar WHERE {
   { %s }
   { ?c wdt:P159 ?loc BIND("hq" AS ?src) } UNION { ?c wdt:P131 ?loc BIND("in" AS ?src) }
   UNION { ?c wdt:P17 ?loc BIND("country" AS ?src) }
+  UNION { ?c wdt:P159|wdt:P131 ?l . ?l wdt:P17 ?loc . VALUES ?loc { wd:Q148 wd:Q865 wd:Q8646 wd:Q14773 }
+          FILTER NOT EXISTS { ?c wdt:P17 ?any } BIND("country" AS ?src) }
   OPTIONAL { ?loc wdt:P131* ?sar . VALUES ?sar { wd:Q8646 wd:Q14773 } }
 }""" % COMPANIES
 
@@ -149,7 +154,12 @@ MUNICIPALITIES = {"Q956", "Q11736", "Q8686", "Q11725"}
 # 港澳台，名称同样与 GeoJSON 一致；Q57251 为「台湾省」
 REGIONS = {"Q8646": "香港特别行政区", "Q14773": "澳门特别行政区", "Q865": "台湾省", "Q57251": "台湾省"}
 
-# 由总部（P159）沿 P131* 上溯到省级和地级市（Q748149）；没填总部的退而用条目自身的 P131
+# 地级行政区的类：地级市、副省级市、自治州、地区、盟、省直辖县级行政区（仙桃、济源等，地图上也单列）
+CITY_CLASSES = ["Q748149", "Q250811", "Q788104", "Q4056396", "Q1045608", "Q288653", "Q18657584"]
+# 伊犁州下辖塔城、阿勒泰两个地区，两者都命中时取地区
+CITY_DEMOTE = {"Q848127"}
+
+# 由总部（P159）沿 P131* 上溯到省级和地级行政区；没填总部的退而用条目自身的 P131
 LOCATION = PREFIXES + """
 SELECT DISTINCT ?c ?src ?loc ?prov ?city ?cityLabel WHERE {
   { %s }
@@ -157,10 +167,10 @@ SELECT DISTINCT ?c ?src ?loc ?prov ?city ?cityLabel WHERE {
   VALUES ?prov { %s }
   ?loc wdt:P131* ?prov .
   OPTIONAL {
-    ?loc wdt:P131* ?city . ?city wdt:P31 wd:Q748149 .
+    ?loc wdt:P131* ?city . ?city wdt:P31 ?cityClass . VALUES ?cityClass { %s }
     ?city rdfs:label ?cityLabel FILTER(LANG(?cityLabel) IN ("zh-cn", "zh-hans", "zh"))
   }
-}""" % (COMPANIES, " ".join("wd:" + q for q in {**PROVINCES, **REGIONS}))
+}""" % (COMPANIES, " ".join("wd:" + q for q in {**PROVINCES, **REGIONS}), " ".join("wd:" + q for q in CITY_CLASSES))
 
 ZH_ORDER = ("zh-cn", "zh-hans", "zh")
 
@@ -383,8 +393,10 @@ def main() -> int:
         label = r.get("cityLabel", {})
         name = PROVINCES.get(prov) or REGIONS[prov]
         city = name if prov in MUNICIPALITIES else None if prov in REGIONS else label.get("value")
-        # 同一地点可能返回多种中文标签，取简体优先（zh 常是繁体，如「貴陽市」）
-        rank = -1 if prov in MUNICIPALITIES or prov in REGIONS else ZH_ORDER.index(label["xml:lang"]) if city else len(ZH_ORDER)
+        # 同一地点可能返回多种中文标签，取简体优先（zh 常是繁体，如「貴陽市」）；被降级的城市排在最后
+        rank = -1 if prov in MUNICIPALITIES or prov in REGIONS else ZH_ORDER.index(label["xml:lang"]) if city else 99
+        if city and "city" in r and qid(r["city"]["value"]) in CITY_DEMOTE:
+            rank += len(ZH_ORDER)
         slot = locs.setdefault(c, {}).setdefault(src, {})
         if loc not in slot or rank < slot[loc][2]:
             slot[loc] = (name, city, rank)
