@@ -34,7 +34,7 @@ function renderKpis(rank) {
     `<div class="k-num">${v.toLocaleString()}</div><div class="k-sub">${sub}</div></div>`;
   const pct = (v) => (n ? `${Math.round(v / n * 100)}%` : "—");
   const cnt = (f) => items.filter(f).length;
-  const listed = cnt((c) => c.listed), active = cnt((c) => c.dissolved == null);
+  const listed = cnt((c) => c.listed), active = cnt((c) => !gone(c));
   const site = cnt((c) => c.website), en = cnt((c) => c.enwiki);
   $("kpis").innerHTML =
     k("收录", n, `全国第 ${rank}`) +

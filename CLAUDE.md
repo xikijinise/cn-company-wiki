@@ -28,6 +28,7 @@ gh workflow run deploy.yml -f refresh=true # 在 CI 上重新抓取并部署
 - **不是机构的名词**（如「沙县小吃」这种小吃 / 菜系、街道）剔除：`NOT_ORG` 里的类经 P31/P279* 命中即排除，直接标为公司等核心类的不受影响。被剔除的条目会打印在抓取日志里，发现误伤 / 漏网就调整 `NOT_ORG`。
 - **官网挑选**：从 `p:P856` 取全部非弃用值，按「未结束（无 P582）> 不是存档 / 社交平台 > 中文（P407）> 不像英文版（`english.`、`/en/`）> 首选等级 > https > 短」挑一个；粘连的坏网址只取第一个。Wikidata 没填官网、或挑出来的仍是英文版的，读中文、再读英文维基百科信息框的 website / 网站参数兜底（英文版只在原本空着时才用）。
 - **保护阈值**：大陆条目少于 3000 条时脚本以非零码退出且不覆盖已有数据，CI 沿用上一版数据。
+- **并入 / 被取代**：读并入（P7888）> 被取代（P1366）> 后继（P156），写进 `successor`；`here` 表示后继也在本数据里（前端链接到列表搜索，否则链接到 Wikidata）。有 `successor` 的和有 `dissolved` 的一样不算「存续」（`common.js` 的 `gone()`），很多被合并的企业没填解散时间。
 - 数据错误应在 Wikidata 上修正，不在本仓库手工修补数据。
 
 ## 数据格式（前端依赖，改字段要同步改 site/app.js）
@@ -38,7 +39,8 @@ gh workflow run deploy.yml -f refresh=true # 在 CI 上重新抓取并部署
    "zhwiki": "url|null", "enwiki": "url|null", "website": "url|null",
    "hq": "深圳市 | 北京市 / 香港 | null", "province": "广东省 | null", "city": "深圳市 | null",
    "industry": ["…"],
-   "founded": 1987, "dissolved": null, "listed": false, "hmt": true /* 仅港澳台条目有此键 */}
+   "founded": 1987, "dissolved": null, "listed": false, "hmt": true /* 仅港澳台条目有此键 */,
+   "successor": {"id": "Q…", "name": "滴滴出行", "kind": "merged | replaced", "here": true} /* 仅被并入 / 取代的有 */}
 ]}
 ```
 

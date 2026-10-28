@@ -32,13 +32,25 @@ function setScope(k, on) {
 const inScope = (c, ignore = []) => Object.keys(SCOPES).every((k) => scope[k] || ignore.includes(k) || !SCOPES[k](c));
 const visible = (list) => list.filter((c) => inScope(c));
 
+// 已解散，或已并入 / 被取代（不少被合并的企业在 Wikidata 上没填解散时间）
+const gone = (c) => c.dissolved != null || !!c.successor;
+
+// 后继标签：后继也收录了就在列表页搜索它，否则打开它的 Wikidata 页面
+function successorTag(c) {
+  const s = c.successor;
+  const text = (s.kind === "merged" ? `已并入 ${s.name}` : `后继：${s.name}`) + (c.dissolved != null ? `（${c.dissolved}）` : "");
+  return s.here
+    ? `<a class="tag gone succ" href="${esc("./#" + new URLSearchParams({ q: s.name, status: "all" }))}" title="在列表中查看 ${esc(s.name)}">${esc(text)}</a>`
+    : `<a class="tag gone succ" href="https://www.wikidata.org/wiki/${esc(s.id)}" target="_blank" rel="noopener" title="${esc(s.name)} 未收录，在 Wikidata 查看">${esc(text)} ↗</a>`;
+}
+
 function row(c) {
   const name = c.zh || c.en || c.id;
   const en = c.zh && c.en ? `<span class="en">${esc(c.en)}</span>` : "";
   const tags = (c.type && c.type !== "企业" ? `<span class="tag kind">${esc(c.type)}</span>` : "") +
     (c.hmt && c.province ? `<span class="tag kind">${esc(shortProvince(c.province))}</span>` : "") +
     (c.listed ? `<span class="tag listed">上市</span>` : "") +
-    (c.dissolved != null ? `<span class="tag gone">已解散 ${c.dissolved}</span>` : "");
+    (c.successor ? successorTag(c) : c.dissolved != null ? `<span class="tag gone">已解散 ${c.dissolved}</span>` : "");
   const meta = [
     c.hq && esc(c.hq),
     c.founded && `${c.founded} 年成立`,

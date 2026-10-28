@@ -119,6 +119,16 @@ SELECT DISTINCT ?c ?cls WHERE {
 }""" % (COMPANIES, " ".join("wd:" + q for q in NOT_ORG), " ".join("wd:" + q for q in CORE_CLASSES))
 
 # 官网（P856）连同等级和限定符一起取：同一条目常有中英文多个官网，需按语言挑选
+# 被合并 / 被取代：并入（P7888）> 被取代（P1366）> 后继（P156），取优先级最高的一个
+SUCCESSOR_PROPS = {"P7888": "merged", "P1366": "replaced", "P156": "replaced"}
+SUCCESSOR = PREFIXES + """
+SELECT DISTINCT ?c ?prop ?s ?sLabel WHERE {
+  { %s }
+  VALUES ?prop { %s }
+  ?c ?prop ?s .
+  OPTIONAL { ?s rdfs:label ?sLabel FILTER(LANG(?sLabel) IN ("zh-cn", "zh-hans", "zh", "en")) }
+}""" % (COMPANIES, " ".join("wdt:" + p for p in SUCCESSOR_PROPS))
+
 WEBSITES = PREFIXES + """
 SELECT ?c ?site ?rank ?lang ?end WHERE {
   { %s }
@@ -364,6 +374,22 @@ def main() -> int:
         not_org.setdefault(qid(r["c"]["value"]), set()).add(NOT_ORG[qid(r["cls"]["value"])])
     print(f"  {len(not_org)} found", file=sys.stderr)
 
+    print("Querying successors (merged / replaced)…", file=sys.stderr)
+    # succ[c] = (属性优先级, 后继 id, {语言: 标签})
+    succ: dict[str, tuple[int, str, dict[str, str]]] = {}
+    succ_order = list(SUCCESSOR_PROPS)
+    for r in sparql(SUCCESSOR):
+        c, s = qid(r["c"]["value"]), qid(r["s"]["value"])
+        if not s.startswith("Q"):
+            continue
+        rank = succ_order.index(r["prop"]["value"].rsplit("/", 1)[-1])
+        if c not in succ or rank < succ[c][0] or (rank == succ[c][0] and s == succ[c][1]):
+            labels = succ[c][2] if c in succ and succ[c][1] == s else {}
+            if "sLabel" in r:
+                labels.setdefault(r["sLabel"]["xml:lang"], r["sLabel"]["value"])
+            succ[c] = (rank, s, labels)
+    print(f"  {len(succ)} found", file=sys.stderr)
+
     print("Querying websites…", file=sys.stderr)
     # sites[c][url] = (preferred, langs, ended)
     sites: dict[str, dict[str, tuple[bool, frozenset[str], bool]]] = {}
@@ -482,9 +508,17 @@ def main() -> int:
             "founded": d["inception"],
             "dissolved": d["dissolved"],
             "listed": d["listed"],
+            # 并入 / 被取代：{"id", "name", "kind": "merged" | "replaced", "here": 后继是否也在本数据里}
+            **({"successor": {"id": succ[c][1], "name": pick_any(succ[c][2]) or succ[c][1],
+                              "kind": SUCCESSOR_PROPS[succ_order[succ[c][0]]]}} if c in succ else {}),
             **({"hmt": True} if is_hmt else {}),
         })
     companies.sort(key=lambda x: (x["zh"] or x["en"] or x["id"], x["id"]))
+    # 后继也在本数据里的，前端链接到列表搜索，否则链接到 Wikidata
+    ids = {x["id"] for x in companies}
+    for x in companies:
+        if "successor" in x:
+            x["successor"]["here"] = x["successor"]["id"] in ids
 
     stats = {
         "total": len(companies),
@@ -493,6 +527,7 @@ def main() -> int:
         "enwiki": sum(1 for x in companies if x["enwiki"]),
         "website": sum(1 for x in companies if x["website"]),
         "dissolved": sum(1 for x in companies if x["dissolved"] is not None),
+        "successor": sum(1 for x in companies if "successor" in x),
         "listed": sum(1 for x in companies if x["listed"]),
         "province": sum(1 for x in companies if x["province"]),
         "hmt": sum(1 for x in companies if x.get("hmt")),

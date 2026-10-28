@@ -22,7 +22,7 @@ function summarize() {
     total: list.length,
     business: list.filter((c) => c.type === "企业").length,
     listed: list.filter((c) => c.listed).length,
-    dissolved: list.filter((c) => c.dissolved != null).length,
+    dissolved: list.filter(gone).length,
     cities: countBy(list, (c) => c.city).slice(0, 3),
     industries: countBy(list, (c) => c.industry).slice(0, 3),
   })).sort((a, b) => b.total - a.total);
@@ -38,7 +38,7 @@ function tooltip(params) {
   const list = (pairs) => pairs.map(([k, n]) => `${esc(k)} ${n}`).join("、") || "—";
   return `<div class="tt"><b>${esc(name)}</b> <span class="tt-muted">第 ${s.rank} 名</span>` +
     `<div class="tt-big">${s.total.toLocaleString()} <small>家</small></div>` +
-    `<div>企业 ${s.business} · 上市 ${s.listed} · 已解散 ${s.dissolved}</div>` +
+    `<div>企业 ${s.business} · 上市 ${s.listed} · 已解散 / 并入 ${s.dissolved}</div>` +
     `<div><span class="tt-muted">主要城市</span> ${list(s.cities)}</div>` +
     `<div><span class="tt-muted">热门行业</span> ${list(s.industries)}</div>` +
     `<div class="tt-cta">点击查看分析 →</div></div>`;

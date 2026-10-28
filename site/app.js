@@ -79,7 +79,7 @@ function matcher() {
   const type = els.type.value;
   const prov = els.prov.value;
   return (c, skip) =>
-    (status === "all" || (status === "active") === (c.dissolved == null)) &&
+    (status === "all" || (status === "active") === !gone(c)) &&
     (!type || skip === "type" || c.type === type) &&
     (!prov || skip === "prov" || c.province === prov) &&
     (!ind || skip === "industry" || (c.industry || []).includes(ind)) &&
@@ -121,7 +121,7 @@ function renderStats() {
   const pool = visible(all);
   const n = (f) => pool.filter(f).length.toLocaleString();
   els.stats.innerHTML =
-    `收录 <b>${pool.length.toLocaleString()}</b> 家 · 企业 <b>${n((c) => c.type === "企业")}</b> · 存续 <b>${n((c) => c.dissolved == null)}</b> · ` +
+    `收录 <b>${pool.length.toLocaleString()}</b> 家 · 企业 <b>${n((c) => c.type === "企业")}</b> · 存续 <b>${n((c) => !gone(c))}</b> · ` +
     `有官网 <b>${n((c) => c.website)}</b> · 上市 <b>${n((c) => c.listed)}</b> · 有英文维基 <b>${n((c) => c.enwiki)}</b>` +
     (scope.hmt ? ` · 其中港澳台 <b>${n((c) => c.hmt)}</b>` : "") +
     (scope.edu ? ` · 其中教育机构 <b>${n((c) => c.type === "教育机构")}</b>` : "");
@@ -147,6 +147,8 @@ async function init() {
   els.q.addEventListener("input", () => { clearTimeout(t); t = setTimeout(apply, 150); });
   for (const el of [els.status, els.type, els.prov, els.industry, els.sort, els.listed, els.hasSite, els.hasEn]) el.addEventListener("change", apply);
   els.more.addEventListener("click", renderMore);
+  // 点击后继标签等站内链接只改 hash，需要重新读取筛选条件
+  addEventListener("hashchange", () => { readState(); renderStats(); apply(); scrollTo(0, 0); });
   for (const k in SCOPES) els[k].addEventListener("change", () => {
     setScope(k, els[k].checked);
     renderStats();
