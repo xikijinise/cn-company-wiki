@@ -18,20 +18,23 @@ function prepare(c) {
   return c;
 }
 
-// 下拉框选项随「含港澳台」开关重建，保留当前选择（若选项已不存在则回到「全部」）
+// 重建下拉框选项并保留当前选择：当前选中项即使已没有结果也留着（显示 0），免得筛选被悄悄清掉
 function fillSelect(el, pairs) {
   const keep = el.value;
+  if (keep && !pairs.some(([v]) => v === keep)) pairs = [[keep, 0], ...pairs];
   el.innerHTML = el.options[0].outerHTML +
     pairs.map(([v, n]) => `<option value="${esc(v)}">${esc(v)}（${n.toLocaleString()}）</option>`).join("");
   el.value = keep;
   if (el.value !== keep) el.value = "";
 }
 
-function fillOptions() {
+// 联动筛选：每个下拉框的选项和数字只算满足「其他」所有条件的条目（不算它自己，否则只剩一个选项）
+function fillOptions(test = () => true) {
   const pool = visible(all);
-  fillSelect(els.type, countBy(pool, (c) => c.type));
-  fillSelect(els.prov, countBy(pool, (c) => c.province));
-  fillSelect(els.industry, countBy(pool, (c) => c.industry).filter(([, n]) => n >= 5).slice(0, 80));
+  const facet = (skip, key) => countBy(pool.filter((c) => test(c, skip)), key);
+  fillSelect(els.type, facet("type", (c) => c.type));
+  fillSelect(els.prov, facet("prov", (c) => c.province));
+  fillSelect(els.industry, facet("industry", (c) => c.industry).slice(0, 80));
 }
 
 function readState() {
@@ -68,21 +71,28 @@ function writeState() {
   history.replaceState(null, "", h ? "#" + h : location.pathname + location.search);
 }
 
-function apply() {
+// 当前所有筛选条件；skip 指定跳过哪个下拉框的条件（给联动筛选算数字用）
+function matcher() {
   const terms = els.q.value.trim().toLowerCase().split(/\s+/).filter(Boolean);
   const status = els.status.value;
   const ind = els.industry.value;
   const type = els.type.value;
   const prov = els.prov.value;
-  filtered = visible(all).filter((c) =>
+  return (c, skip) =>
     (status === "all" || (status === "active") === (c.dissolved == null)) &&
-    (!type || c.type === type) &&
-    (!prov || c.province === prov) &&
-    (!ind || (c.industry || []).includes(ind)) &&
+    (!type || skip === "type" || c.type === type) &&
+    (!prov || skip === "prov" || c.province === prov) &&
+    (!ind || skip === "industry" || (c.industry || []).includes(ind)) &&
     (!els.listed.checked || c.listed) &&
     (!els.hasSite.checked || c.website) &&
     (!els.hasEn.checked || c.enwiki) &&
-    terms.every((t) => c._hay.includes(t)));
+    terms.every((t) => c._hay.includes(t));
+}
+
+function apply() {
+  const test = matcher();
+  filtered = visible(all).filter((c) => test(c));
+  fillOptions(test);
 
   const s = els.sort.value;
   if (s !== "name") {
@@ -139,7 +149,6 @@ async function init() {
   els.more.addEventListener("click", renderMore);
   for (const k in SCOPES) els[k].addEventListener("change", () => {
     setScope(k, els[k].checked);
-    fillOptions();
     renderStats();
     apply();
   });
