@@ -38,7 +38,7 @@ function renderKpis(rank) {
   const site = cnt((c) => c.website), en = cnt((c) => c.enwiki);
   $("kpis").innerHTML =
     k("收录", n, `全国第 ${rank}`) +
-    k("企业", cnt((c) => c.type === "企业"), "其余为学校等机构") +
+    k("企业", cnt((c) => c.type === "企业"), scope.edu ? "其余为学校等机构" : "其余为图书馆等机构") +
     k("上市", listed, `占 ${pct(listed)}`) +
     k("存续", active, `占 ${pct(active)}`) +
     k("有官网", site, `占 ${pct(site)}`) +
@@ -199,14 +199,17 @@ async function init() {
   try {
     const data = await loadData();
     $("generated").textContent = data.generated ? new Date(data.generated).toLocaleDateString("zh-CN") : "—";
-    // 港澳台页面直接打开时照常显示；排名和下拉框跟随「含港澳台」开关
+    // 港澳台页面直接打开时照常显示；排名、下拉框、名单跟随「含港澳台」「含教育机构」开关
     const all = data.companies.map((c) => ({ ...c, _name: c.zh || c.en || c.id }));
-    const provinces = countBy(all.filter((c) => !c.hmt || hmtOn() || c.province === name), (c) => c.province);
+    const here = (c) => c.province === name && inScope(c, ["hmt"]);
+    const provinces = countBy(all.filter((c) => inScope(c) || here(c)), (c) => c.province);
+    $("edu").checked = scope.edu;
+    $("edu").addEventListener("change", (e) => { setScope("edu", e.target.checked); location.reload(); });
     $("pick").innerHTML = `<option value="">选择省份…</option>` + provinces
       .map(([p, n]) => `<option value="${esc(p)}"${p === name ? " selected" : ""}>${esc(p)}（${n}）</option>`).join("");
     $("pick").addEventListener("change", (e) => { if (e.target.value) location.search = "?p=" + encodeURIComponent(e.target.value); });
 
-    items = all.filter((c) => c.province === name)
+    items = all.filter(here)
       .sort((a, b) => b.listed - a.listed || a._name.localeCompare(b._name, "zh-CN"));
     if (!items.length) {
       $("title").textContent = name || "省份分析";

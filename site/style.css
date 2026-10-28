@@ -115,7 +115,7 @@ a { color: var(--accent); }
 .wrap.mapgrid { max-width: 1180px; display: grid; grid-template-columns: minmax(0, 1fr) 260px; gap: 16px; padding-top: 20px; }
 .map { width: 100%; height: min(640px, 72vh); }
 .mapcard { position: relative; }
-.maptoggle { position: absolute; top: 12px; right: 16px; z-index: 2; font-size: 14px; }
+.maptoggle { position: absolute; top: 12px; right: 16px; z-index: 2; font-size: 14px; display: flex; flex-direction: column; align-items: flex-end; gap: 4px; }
 .rank ol { list-style: none; margin: 0; padding: 0; max-height: min(640px, 72vh); overflow-y: auto; }
 .rank a {
   display: grid; grid-template-columns: 4.5em 1fr 3em; gap: 8px; align-items: center;
@@ -134,7 +134,7 @@ a { color: var(--accent); }
 /* 省份页 */
 .crumb { margin: 0 0 8px; font-size: 14px; }
 .crumb a { text-decoration: none; }
-.switch { display: inline-flex; gap: 8px; align-items: center; margin-top: 12px; font-size: 14px; color: var(--muted); }
+.switch { display: inline-flex; gap: 8px; align-items: center; margin: 12px 16px 0 0; font-size: 14px; color: var(--muted); }
 .switch select {
   padding: 5px 8px; border: 1px solid var(--line); border-radius: 8px;
   background: var(--surface); color: var(--text); font: inherit;

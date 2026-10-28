@@ -32,7 +32,7 @@ function summarize() {
 function tooltip(params) {
   const name = params.name;
   if (!name) return "";
-  if (HMT.has(name) && !hmtOn()) return `<b>${esc(name)}</b><br><span class="tt-muted">已隐藏，勾选右上角「含港澳台」显示</span>`;
+  if (HMT.has(name) && !scope.hmt) return `<b>${esc(name)}</b><br><span class="tt-muted">已隐藏，勾选右上角「含港澳台」显示</span>`;
   const s = summary.get(name);
   if (!s) return `<b>${esc(name)}</b><br><span class="tt-muted">暂无收录</span>`;
   const list = (pairs) => pairs.map(([k, n]) => `${esc(k)} ${n}`).join("、") || "—";
@@ -85,7 +85,8 @@ function renderStats() {
   const pool = visible(all);
   const located = ranked.reduce((n, s) => n + s.total, 0);
   $("stats").innerHTML = `收录 <b>${pool.length.toLocaleString()}</b> 家，其中 <b>${located.toLocaleString()}</b> 家可定位到省份 · 覆盖 <b>${ranked.length}</b> 个省级行政区` +
-    (hmtOn() ? `（含港澳台 <b>${pool.filter((c) => c.hmt).length.toLocaleString()}</b> 家）` : "");
+    (scope.hmt ? ` · 含港澳台 <b>${pool.filter((c) => c.hmt).length.toLocaleString()}</b> 家` : "") +
+    (scope.edu ? ` · 含教育机构 <b>${pool.filter((c) => c.type === "教育机构").length.toLocaleString()}</b> 家` : "");
   if (!located) $("hint").textContent = "当前数据还没有省份字段，等下次数据刷新后即可显示。";
 }
 
@@ -109,7 +110,7 @@ async function init() {
     const [data, geo] = await Promise.all([loadData(), fetch("geo/china.json").then((r) => r.json())]);
     all = data.companies;
     $("generated").textContent = data.generated ? new Date(data.generated).toLocaleDateString("zh-CN") : "—";
-    $("hmt").checked = hmtOn();
+    for (const k in SCOPES) $(k).checked = scope[k];
     summarize();
     renderStats();
 
@@ -118,8 +119,8 @@ async function init() {
     renderMap();
     renderRank();
     bindRank();
-    $("hmt").addEventListener("change", (e) => {
-      setHmt(e.target.checked);
+    for (const k in SCOPES) $(k).addEventListener("change", (e) => {
+      setScope(k, e.target.checked);
       summarize();
       renderStats();
       renderMap();

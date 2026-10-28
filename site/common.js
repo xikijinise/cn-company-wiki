@@ -20,15 +20,17 @@ async function loadData() {
 // 省份名去掉「省 / 市 / 自治区 / 特别行政区」等后缀，用于紧凑显示
 const shortProvince = (p) => p.replace(/(壮族|回族|维吾尔)?自治区$|特别行政区$|省$|市$/, "");
 
-// 「含港澳台」开关：默认关闭，各页共用，记在本浏览器里（存不了也不影响当前页使用）
-const HMT_KEY = "cnwiki.hmt";
-let hmtState = (() => { try { return localStorage.getItem(HMT_KEY) === "1"; } catch { return false; } })();
-const hmtOn = () => hmtState;
-function setHmt(on) {
-  hmtState = on;
-  try { on ? localStorage.setItem(HMT_KEY, "1") : localStorage.removeItem(HMT_KEY); } catch { /* 隐私模式等 */ }
+// 「含港澳台」「含教育机构」开关：默认关闭，各页共用，记在本浏览器里（存不了也不影响当前页使用）
+const SCOPES = { hmt: (c) => c.hmt, edu: (c) => c.type === "教育机构" };
+const scope = {};
+for (const k in SCOPES) scope[k] = (() => { try { return localStorage.getItem("cnwiki." + k) === "1"; } catch { return false; } })();
+function setScope(k, on) {
+  scope[k] = on;
+  try { on ? localStorage.setItem("cnwiki." + k, "1") : localStorage.removeItem("cnwiki." + k); } catch { /* 隐私模式等 */ }
 }
-const visible = (list) => (hmtState ? list : list.filter((c) => !c.hmt));
+// ignore：不受哪些开关限制（如直接打开港澳台的省份页）
+const inScope = (c, ignore = []) => Object.keys(SCOPES).every((k) => scope[k] || ignore.includes(k) || !SCOPES[k](c));
+const visible = (list) => list.filter((c) => inScope(c));
 
 function row(c) {
   const name = c.zh || c.en || c.id;
