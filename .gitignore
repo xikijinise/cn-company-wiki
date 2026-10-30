@@ -2,3 +2,4 @@ data/.ids_cache.json
 __pycache__/
 *.pyc
 .claude/
+data/lite.json

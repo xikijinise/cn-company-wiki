@@ -7,7 +7,7 @@
 
 - `scripts/fetch_companies.py` — 从 Wikidata 抓取（QLever 偶尔输出未转义控制字符，故用 `json.loads(strict=False)`），写 `data/companies.json`。只依赖 `requests`。
 - `data/companies.json` — 数据文件，提交在仓库里；每周由 Actions 刷新并以 `github-actions[bot]` 身份提交回来（改代码前先 `git pull`）。
-- `site/` — 纯静态前端，无构建。`index.html`+`app.js` 列表页；`map.html`+`map.js` 省份地图；`province.html`+`province.js` 省份分析（`?p=广东省`）；`common.js` 三页共用（esc / loadData / row / 配色）。地图和图表用 ECharts（jsDelivr CDN，钉死 5.5.1），省界 GeoJSON 在 `site/geo/china.json`，各省地级市边界在 `site/geo/<adcode>.json`（直辖市没有；均来自 DataV.GeoAtlas，坐标保留 3 位小数），名称与数据的 `province` / `city` 字段一致（city 取简体标签，否则对不上）。部署时 `data/` 被复制到站点根目录下，本地预览时 app.js 会回退读取 `../data/`。
+- `site/` — 纯静态前端，无构建。`index.html`+`app.js` 列表页；`map.html`+`map.js` 省份地图；`province.html`+`province.js` 省份分析（`?p=广东省`）；`common.js` 三页共用（esc / loadData / row / 配色）。地图和图表用 ECharts 5.5.1 的按需打包版 `site/vendor/echarts.custom.min.js`（只含地图 / 柱状 / 饼图及用到的组件，比 CDN 全量版小约 40%；入口在 `scripts/echarts/entry.js`，加用新图表类型或组件时要改入口并重新打包），省界 GeoJSON 在 `site/geo/china.json`，各省地级市边界在 `site/geo/<adcode>.json`（直辖市没有；均来自 DataV.GeoAtlas，坐标保留 3 位小数），名称与数据的 `province` / `city` 字段一致（city 取简体标签，否则对不上）。部署时 `data/` 被复制到站点根目录下，本地预览时 app.js 会回退读取 `../data/`。地图页读部署时由 `scripts/build_lite.py` 生成的精简数据 `data/lite.json`（约 30KB gzip，不提交，已 gitignore），没有时退回完整数据；改了地图页用到的字段要同步改 `build_lite.py` 和 `map.js` 的 `loadLite()`。
 - `.github/workflows/deploy.yml` — push 到 main 时直接部署；每周一 03:17 UTC 或手动触发（`refresh`）时先重新抓取再部署。在非 main 分支手动触发只抓取并把数据提交回该分支，不部署（`gh workflow run deploy.yml --ref <分支> -f refresh=true`），适合改了抓取脚本后试跑。
 
 ## 常用命令
@@ -17,6 +17,11 @@ pip install -r scripts/requirements.txt
 python scripts/fetch_companies.py          # 约 1 分钟
 python -m http.server 8000                 # 打开 http://localhost:8000/site/
 gh workflow run deploy.yml -f refresh=true # 在 CI 上重新抓取并部署
+python scripts/build_lite.py               # 生成地图页的精简数据（部署时自动执行）
+# 重新打包 ECharts（在临时目录里）：
+#   npm i echarts@5.5.1 esbuild@0.24.0
+#   npx esbuild <仓库>/scripts/echarts/entry.js --bundle --minify --format=iife --target=es2018 --legal-comments=none --outfile=echarts.custom.min.js
+#   再在文件开头加上版权注释，放到 site/vendor/
 ```
 
 ## 已定下的决策（别轻易推翻）

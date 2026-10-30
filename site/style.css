@@ -168,6 +168,8 @@ a.tag.succ:hover { color: var(--accent); background: var(--accent-soft); }
 }
 
 @media (max-width: 640px) {
+  /* 统计行加载后会折成两行，先留好高度，免得下面的内容整体下移 */
+  .stats { min-height: 3.1em; }
   /* 手机上筛选项默认折叠，只留一行搜索框 */
   .controls { padding: 10px 0 8px; }
   .filterbtn { display: block; }

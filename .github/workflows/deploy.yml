@@ -56,7 +56,8 @@ jobs:
         run: |
           mkdir -p _site/data
           cp -r site/. _site/
-          cp data/companies.json _site/data/
+          python3 scripts/build_lite.py
+          cp data/companies.json data/lite.json _site/data/
 
       - uses: actions/upload-pages-artifact@v3
         if: github.ref == 'refs/heads/main'

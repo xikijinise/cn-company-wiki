@@ -7,8 +7,8 @@ const host = (u) => { try { return new URL(u).hostname.replace(/^www\./, ""); } 
 const safeUrl = (u) => (/^https?:\/\//i.test(u || "") ? u : null);
 
 // Deployed site serves data/ next to index.html; local preview of site/ reads ../data/.
-async function loadData() {
-  for (const path of ["data/companies.json", "../data/companies.json"]) {
+async function loadData(name = "companies.json") {
+  for (const path of ["data/" + name, "../data/" + name]) {
     try {
       const r = await fetch(path);
       if (r.ok) return await r.json();

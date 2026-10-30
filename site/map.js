@@ -105,9 +105,25 @@ function bindRank() {
   });
 }
 
+// 地图只需省份、城市、类型等少数字段：优先读部署时生成的精简数据 lite.json（见 scripts/build_lite.py），
+// 本地预览没有它时退回完整数据
+async function loadLite() {
+  try {
+    const { generated, dicts, rows } = await loadData("lite.json");
+    const pick = (d, i) => (i < 0 ? null : d[i]);
+    return { generated, companies: rows.map(([p, ci, t, inds, f]) => ({
+      province: pick(dicts.province, p), city: pick(dicts.city, ci), type: pick(dicts.type, t),
+      industry: inds.map((i) => dicts.industry[i]), listed: !!(f & 1), hmt: !!(f & 4),
+      dissolved: f & 2 ? true : null, // 只用于 gone() 判断，精简数据不含年份
+    })) };
+  } catch {
+    return loadData();
+  }
+}
+
 async function init() {
   try {
-    const [data, geo] = await Promise.all([loadData(), fetch("geo/china.json").then((r) => r.json())]);
+    const [data, geo] = await Promise.all([loadLite(), fetch("geo/china.json").then((r) => r.json())]);
     all = data.companies;
     $("generated").textContent = data.generated ? new Date(data.generated).toLocaleDateString("zh-CN") : "—";
     for (const k in SCOPES) $(k).checked = scope[k];
