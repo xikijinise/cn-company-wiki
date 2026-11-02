@@ -61,3 +61,4 @@ python scripts/build_lite.py               # 生成地图页的精简数据（�
 - 提交身份用 `Claude <noreply@anthropic.com>`（用户选定；云端环境的检查要求提交者邮箱为此，否则 GitHub 显示 Unverified），不要用个人邮箱。该配置只存在本地 `.git/config`，新克隆的环境需要重新设置。早期提交用的是 `xikijinise` 的 noreply 邮箱，不必改写。
 - 云端环境如果限制外网，抓取脚本需要能访问 `qlever.dev`；访问不了时不要动 `data/companies.json`，改用 `gh workflow run deploy.yml -f refresh=true` 在 CI 上刷新。
 - 前端文案用简体中文。
+- `site/google058533851bb5c901.html` 是 Google Search Console 的所有权验证文件，部署后位于站点根目录，**不要删除或改名**。
