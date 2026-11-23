@@ -28,8 +28,12 @@ function setDataSource(src) {
   if (!SOURCES[src] || src === dataSource) return;
   try { localStorage.setItem("cnwiki.source", src); } catch { /* ignore */ }
   const u = new URL(location.href);
-  if (u.searchParams.has("src")) u.searchParams.set("src", src);
-  location.href = u.toString();
+  if (u.searchParams.has("src")) {
+    u.searchParams.set("src", src);
+    location.href = u.toString();
+  } else {
+    location.reload();
+  }
 }
 
 function mountSourceSwitch() {
