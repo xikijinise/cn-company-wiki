@@ -42,13 +42,21 @@ jobs:
           pip install -r scripts/requirements.txt
           python scripts/fetch_companies.py
 
+      - name: Fetch from Wikipedia
+        if: github.event_name == 'schedule' || inputs.refresh
+        continue-on-error: true
+        timeout-minutes: 30
+        run: |
+          pip install -r scripts/requirements.txt
+          python scripts/fetch_wikipedia.py
+
       - name: Commit refreshed data
         if: github.event_name == 'schedule' || inputs.refresh
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add data/companies.json
-          git diff --cached --quiet || (git commit -m "data: weekly Wikidata refresh" && git push)
+          git add data/
+          git diff --cached --quiet || (git commit -m "data: weekly Wikidata & Wikipedia refresh" && git push)
 
       # 只有 main 才部署；在其他分支手动触发只用来试跑抓取（结果提交回该分支）
       - name: Assemble site
@@ -57,7 +65,7 @@ jobs:
           mkdir -p _site/data
           cp -r site/. _site/
           python3 scripts/build_lite.py
-          cp data/companies.json data/lite.json _site/data/
+          cp data/companies*.json data/lite*.json _site/data/
 
       - uses: actions/upload-pages-artifact@v3
         if: github.ref == 'refs/heads/main'

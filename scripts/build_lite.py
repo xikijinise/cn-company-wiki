@@ -12,12 +12,14 @@ import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
-SRC = ROOT / "data" / "companies.json"
-OUT = ROOT / "data" / "lite.json"
+PAIRS = [
+    (ROOT / "data" / "companies.json", ROOT / "data" / "lite.json"),
+    (ROOT / "data" / "companies-wp.json", ROOT / "data" / "lite-wp.json"),
+]
 
 
-def main() -> int:
-    data = json.loads(SRC.read_text(encoding="utf-8"))
+def build_one(src: Path, out: Path) -> None:
+    data = json.loads(src.read_text(encoding="utf-8"))
     dicts: dict[str, list[str]] = {"province": [], "city": [], "type": [], "industry": []}
     index: dict[str, dict[str, int]] = {k: {} for k in dicts}
 
@@ -36,9 +38,15 @@ def main() -> int:
         rows.append([code("province", c["province"]), code("city", c["city"]), code("type", c["type"]),
                      [code("industry", i) for i in c["industry"]], flags])
 
-    OUT.write_text(json.dumps({"generated": data["generated"], "dicts": dicts, "rows": rows},
+    out.write_text(json.dumps({"generated": data["generated"], "dicts": dicts, "rows": rows},
                               ensure_ascii=False, separators=(",", ":")), encoding="utf-8")
-    print(f"Wrote {OUT} ({OUT.stat().st_size // 1024} KB, {len(rows)} rows)", file=sys.stderr)
+    print(f"Wrote {out} ({out.stat().st_size // 1024} KB, {len(rows)} rows)", file=sys.stderr)
+
+
+def main() -> int:
+    for src, out in PAIRS:
+        if src.exists():
+            build_one(src, out)
     return 0
 
 

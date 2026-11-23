@@ -6,15 +6,68 @@ const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&
 const host = (u) => { try { return new URL(u).hostname.replace(/^www\./, ""); } catch { return "官网"; } };
 const safeUrl = (u) => (/^https?:\/\//i.test(u || "") ? u : null);
 
+// 数据源切换：Wikidata（默认）/ Wikipedia，状态存在 localStorage（也支持 URL ?src=wikipedia）
+const SOURCES = {
+  wikidata: { label: "Wikidata", full: "companies.json", lite: "lite.json" },
+  wikipedia: { label: "Wikipedia", full: "companies-wp.json", lite: "lite-wp.json" },
+};
+let dataSource = (() => {
+  const q = new URLSearchParams(location.search).get("src");
+  if (q && SOURCES[q]) {
+    try { localStorage.setItem("cnwiki.source", q); } catch { /* ignore */ }
+    return q;
+  }
+  try {
+    const saved = localStorage.getItem("cnwiki.source");
+    if (saved && SOURCES[saved]) return saved;
+  } catch { /* ignore */ }
+  return "wikidata";
+})();
+
+function setDataSource(src) {
+  if (!SOURCES[src] || src === dataSource) return;
+  try { localStorage.setItem("cnwiki.source", src); } catch { /* ignore */ }
+  const u = new URL(location.href);
+  if (u.searchParams.has("src")) u.searchParams.set("src", src);
+  location.href = u.toString();
+}
+
+function mountSourceSwitch() {
+  const wrap = document.querySelector(".top .wrap");
+  if (!wrap || wrap.querySelector(".src-switch")) return;
+  const box = document.createElement("div");
+  box.className = "src-switch";
+  box.setAttribute("role", "group");
+  box.setAttribute("aria-label", "切换数据源");
+  box.innerHTML = `<span class="src-label">数据源</span>` + Object.entries(SOURCES).map(([k, v]) =>
+    `<button type="button" data-src="${k}" aria-pressed="${k === dataSource}">${v.label}</button>`
+  ).join("");
+  box.addEventListener("click", (e) => {
+    const btn = e.target.closest("button[data-src]");
+    if (btn) setDataSource(btn.dataset.src);
+  });
+  wrap.prepend(box);
+  if (dataSource === "wikipedia") {
+    const foot = document.querySelector(".foot p");
+    if (foot) {
+      const gen = foot.querySelector("#generated")?.outerHTML || '<span id="generated">—</span>';
+      foot.innerHTML = `数据来自 <a href="https://zh.wikipedia.org/">中文维基百科</a> 与 <a href="https://en.wikipedia.org/">English Wikipedia</a>（CC BY-SA 4.0），由公司分类树与信息框解析得出。数据更新于 ${gen}。`;
+    }
+  }
+}
+mountSourceSwitch();
+
 // Deployed site serves data/ next to index.html; local preview of site/ reads ../data/.
 async function loadData(name = "companies.json") {
-  for (const path of ["data/" + name, "../data/" + name]) {
+  const src = SOURCES[dataSource] || SOURCES.wikidata;
+  const file = name === "lite.json" ? src.lite : name === "companies.json" ? src.full : name;
+  for (const path of ["data/" + file, "../data/" + file]) {
     try {
       const r = await fetch(path);
       if (r.ok) return await r.json();
     } catch { /* try next */ }
   }
-  throw new Error("无法加载数据");
+  throw new Error(`无法加载 ${src.label} 数据（${file}）`);
 }
 
 // 省份名去掉「省 / 市 / 自治区 / 特别行政区」等后缀，用于紧凑显示
@@ -34,14 +87,20 @@ const visible = (list) => list.filter((c) => inScope(c));
 
 // 已解散，或已并入 / 被取代（不少被合并的企业在 Wikidata 上没填解散时间）
 const gone = (c) => c.dissolved != null || !!c.successor;
+const isQid = (id) => /^Q\d+$/.test(id || "");
 
-// 后继标签：后继也收录了就在列表页搜索它，否则打开它的 Wikidata 页面
+// 后继标签：后继也收录了就在列表页搜索它，否则打开它的 Wikidata 或维基百科页面
 function successorTag(c) {
   const s = c.successor;
   const text = (s.kind === "merged" ? `已并入 ${s.name}` : `后继：${s.name}`) + (c.dissolved != null ? `（${c.dissolved}）` : "");
-  return s.here
-    ? `<a class="tag gone succ" href="${esc("./#" + new URLSearchParams({ q: s.name, status: "all" }))}" title="在列表中查看 ${esc(s.name)}">${esc(text)}</a>`
-    : `<a class="tag gone succ" href="https://www.wikidata.org/wiki/${esc(s.id)}" target="_blank" rel="noopener" title="${esc(s.name)} 未收录，在 Wikidata 查看">${esc(text)} ↗</a>`;
+  if (s.here) {
+    return `<a class="tag gone succ" href="${esc("./#" + new URLSearchParams({ q: s.name, status: "all" }))}" title="在列表中查看 ${esc(s.name)}">${esc(text)}</a>`;
+  }
+  const href = isQid(s.id)
+    ? `https://www.wikidata.org/wiki/${esc(s.id)}`
+    : `https://zh.wikipedia.org/wiki/${encodeURIComponent(s.name)}`;
+  const tip = isQid(s.id) ? `${s.name} 未收录，在 Wikidata 查看` : `${s.name} 未收录，在维基百科查看`;
+  return `<a class="tag gone succ" href="${href}" target="_blank" rel="noopener" title="${esc(tip)}">${esc(text)} ↗</a>`;
 }
 
 function row(c) {
@@ -61,7 +120,7 @@ function row(c) {
     site && `<a class="site" href="${esc(site)}" target="_blank" rel="noopener" title="${esc(site)}">${esc(host(site))}</a>`,
     c.zhwiki && `<a href="${esc(c.zhwiki)}" target="_blank" rel="noopener">中文维基</a>`,
     c.enwiki && `<a href="${esc(c.enwiki)}" target="_blank" rel="noopener">English</a>`,
-    `<a href="https://www.wikidata.org/wiki/${esc(c.id)}" target="_blank" rel="noopener" title="在 Wikidata 查看或修正">WD</a>`,
+    isQid(c.id) && `<a href="https://www.wikidata.org/wiki/${esc(c.id)}" target="_blank" rel="noopener" title="在 Wikidata 查看或修正">WD</a>`,
   ].filter(Boolean).join("");
   return `<li class="item"><div class="name">${esc(name)}${en}${tags}</div>` +
     `<div class="links">${links}</div><div class="meta">${meta || "&nbsp;"}</div></li>`;
