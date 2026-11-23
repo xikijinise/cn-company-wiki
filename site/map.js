@@ -86,7 +86,8 @@ function renderStats() {
   const located = ranked.reduce((n, s) => n + s.total, 0);
   $("stats").innerHTML = `收录 <b>${pool.length.toLocaleString()}</b> 家，其中 <b>${located.toLocaleString()}</b> 家可定位到省份 · 覆盖 <b>${ranked.length}</b> 个省级行政区` +
     (scope.hmt ? ` · 含港澳台 <b>${pool.filter((c) => c.hmt).length.toLocaleString()}</b> 家` : "") +
-    (scope.edu ? ` · 含教育机构 <b>${pool.filter((c) => c.type === "教育机构").length.toLocaleString()}</b> 家` : "");
+    (scope.edu ? ` · 含教育机构 <b>${pool.filter((c) => c.type === "教育机构").length.toLocaleString()}</b> 家` : "") +
+    (scope.pub ? ` · 含公共机构 <b>${pool.filter((c) => PUB_TYPES.has(c.type)).length.toLocaleString()}</b> 家` : "");
   if (!located) $("hint").textContent = "当前数据还没有省份字段，等下次数据刷新后即可显示。";
 }
 

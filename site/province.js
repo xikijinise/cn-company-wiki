@@ -203,8 +203,10 @@ async function init() {
     const all = data.companies.map((c) => ({ ...c, _name: c.zh || c.en || c.id }));
     const here = (c) => c.province === name && inScope(c, ["hmt"]);
     const provinces = countBy(all.filter((c) => inScope(c) || here(c)), (c) => c.province);
-    $("edu").checked = scope.edu;
-    $("edu").addEventListener("change", (e) => { setScope("edu", e.target.checked); location.reload(); });
+    for (const k of ["edu", "pub"]) {
+      $(k).checked = scope[k];
+      $(k).addEventListener("change", (e) => { setScope(k, e.target.checked); location.reload(); });
+    }
     $("pick").innerHTML = `<option value="">选择省份…</option>` + provinces
       .map(([p, n]) => `<option value="${esc(p)}"${p === name ? " selected" : ""}>${esc(p)}（${n}）</option>`).join("");
     $("pick").addEventListener("change", (e) => { if (e.target.value) location.search = "?p=" + encodeURIComponent(e.target.value); });

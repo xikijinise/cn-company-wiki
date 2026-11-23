@@ -35,7 +35,7 @@ a { color: var(--accent); }
 
 .top { border-bottom: 1px solid var(--line); padding: 36px 0 22px; background: var(--surface); }
 .top .wrap { position: relative; }
-.top h1 { margin: 0; font-size: 28px; letter-spacing: .02em; padding-right: 210px; }
+.top h1 { margin: 0; font-size: 28px; letter-spacing: .02em; padding-right: 270px; }
 .lede { margin: 6px 0 0; color: var(--muted); }
 .stats { margin: 14px 0 0; font-size: 13px; color: var(--muted); font-variant-numeric: tabular-nums; }
 .stats b { color: var(--text); font-weight: 600; }

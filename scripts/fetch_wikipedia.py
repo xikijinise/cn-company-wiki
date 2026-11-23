@@ -78,26 +78,32 @@ SEEDS = [
     ("en", "Category:Companies of Taiwan", 2, "台湾省"),
 ]
 
-# 排除会漂移到人物、产品、事件、历史朝代、按年份重复、列表、模板的子分类
+# 排除会漂移到人物、产品、武器、交通工具、事件、历史朝代、按年份重复、列表、模板的子分类
 SKIP_CAT_ZH = re.compile(
     r"(人物|列表|模板|小作品|命名的分[类類]|[历歷]史|[债債][务務]|事件|[争爭][议議]|[诉訴][讼訟]|"
     r"作品|[电電]影|[游遊][戏戲]|[软軟]件|[产產]品|[车車]型|各朝代|清朝|民[国國]|明朝|宋朝|唐朝|"
     r"[财財][阀閥]|建筑|建築|大[厦廈]|[标標][志誌]|[广廣]告|文化|事故|[丑醜][闻聞]|品牌|商[标標]|"
     r"雇[员員]|[员員]工|董事|高管|创始人|創辦人|CEO|总裁|總裁|企[业業]家|吉祥物|总部大楼|總部大樓|"
+    r"武器|[枪槍]械|[军軍]用|[导導][弹彈]|[战戰][机機]|[舰艦]艇|[装裝]甲|坦克|火炮|[机機][场場]|[车車]站|[桥橋]梁|[铁鐵]路[线線]|地[铁鐵][线線]|航[线線]|手[机機]|"
     r"在[华華]外[资資]|外[资資]在[华華]|外国公司|外國公司|殖民地|"
     r"各年|年成立|年[结結][业業]|各世[纪紀]|各年代|年代成立)"
 )
 SKIP_CAT_EN = re.compile(
     r"(People by company|Lists of |stubs|categories named after|History of |Templates|"
-    r"Buildings|Products|Vehicles|Video games|Films|Software|Characters|Employees|"
+    r"Buildings|Products|Vehicles|Weapons|Aircraft|Ships|Military|Airports|Bridges|Stations|Railway lines|"
+    r"Video games|Films|Software|Characters|Employees|"
     r"Executives|Founders|Controversies|Disasters|Scandals|Brands|Logos|Mascots|"
     r"Qing dynasty|Republic of China \(1912|Imperial China|foreign companies|"
     r"by year|established in|disestablished in|century)",
     re.I,
 )
 
-# 排除明显不是企业的条目标题
-SKIP_TITLE_ZH = re.compile(r"(列表|一览|一覽|名单|名單|排行|榜单|榜單|历史|歷史|事件|案$|丑闻|醜聞)$")
+# 排除明显不是企业/机构的条目标题（列表、武器型号、产品系列、桥梁、机场等）
+SKIP_TITLE_ZH = re.compile(
+    r"(列表|一览|一覽|名单|名單|排行|榜单|榜單|历史|歷史|事件|案$|丑闻|醜聞|"
+    r"步[枪槍]|手[枪槍]|[机機][枪槍]|[冲衝][锋鋒][枪槍]|狙[击擊]|火箭炮|火箭筒|榴[弹彈]|坦克|[装裝]甲|自行.*炮|[护護][卫衛][舰艦]|[驱驅]逐[舰艦]|[潜潛]艇|"
+    r"系列$|大[桥橋]$|[机機][场場]$|老字[号號]$)"
+)
 SKIP_TITLE_EN = re.compile(r"^(List of |Lists of |History of |Economy of |Index of |Outline of )", re.I)
 
 # 省级行政区代码（与 site/geo/<adcode>.json 对应）
@@ -606,9 +612,15 @@ def build_record(key: str, zh_item: dict | None, en_item: dict | None, zh_meta: 
         if not any(re.search(r"(公司|企业|企業|院校|大学|大學|图书馆|圖書館|医院|醫院|博物馆|博物館|Companies of |Universities|Libraries|Hospitals|Museums)", c, re.I) for c in all_cats):
             return None
 
-    # 排除人物信息框（误入公司分类的创始人等）
+    # 排除非机构信息框（人物、武器、交通工具、机场、桥梁、影视、游戏、手机、行政区等）
     for tmpl in (zh_tmpl, en_tmpl):
-        if re.search(r"(person|biography|officeholder|人物|艺人|藝人|政治人物)", tmpl, re.I):
+        if re.search(
+            r"(person|biography|officeholder|weapon|gun|military|aircraft|ship|vehicle|automobile|train|"
+            r"mobile phone|phone|software|video game|film|television|album|song|book|comic|character|"
+            r"airport|station|bridge|road|railway|settlement|event|election|award|"
+            r"人物|艺人|藝人|政治人物|武器|[枪槍]械|[飞飛][机機]|[舰艦]船|[装裝]甲|坦克|汽[车車]|[机機][场場]|[车車]站|[桥橋]梁|影[视視]|[电電]影|[游遊][戏戲]|手[机機]|行政[区區])",
+            tmpl, re.I,
+        ):
             return None
 
     zh_title = zh_item["title"] if zh_item else (en_item["other"] if en_item and en_item.get("other") else None)
@@ -623,8 +635,11 @@ def build_record(key: str, zh_item: dict | None, en_item: dict | None, zh_meta: 
     website = parse_website(zh_p, zh_wt) or parse_website(en_p, en_wt)
 
     # 成立 / 结业年份
-    founded = (parse_year(pick_param(zh_p, ("foundation", "founded", "成立", "成立时间", "成立時間", "创立", "創立", "建立")))
-               or parse_year(pick_param(en_p, ("foundation", "founded"))))
+    founded = (parse_year(pick_param(zh_p, (
+        "foundation", "founded", "established", "opened",
+        "成立", "成立时间", "成立時間", "成立日期", "创立", "創立", "创立时间", "創立時間",
+        "建立", "创建", "創建", "创办", "創辦", "开业", "開業", "始建", "建校", "创校", "創校",
+    ))) or parse_year(pick_param(en_p, ("foundation", "founded", "established", "opened"))))
     dissolved = (parse_year(pick_param(zh_p, ("defunct", "dissolved", "结业", "結業", "结束", "結束", "解散", "倒闭", "倒閉")))
                  or parse_year(pick_param(en_p, ("defunct", "dissolved"))))
 

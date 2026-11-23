@@ -6,8 +6,9 @@ const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&
 const host = (u) => { try { return new URL(u).hostname.replace(/^www\./, ""); } catch { return "官网"; } };
 const safeUrl = (u) => (/^https?:\/\//i.test(u || "") ? u : null);
 
-// 数据源切换：Wikidata（默认）/ Wikipedia，状态存在 localStorage（也支持 URL ?src=wikipedia）
+// 数据源切换：融合（默认）/ Wikidata / Wikipedia，状态存在 localStorage（也支持 URL ?src=merged|wikidata|wikipedia）
 const SOURCES = {
+  merged: { label: "融合", full: "companies-merged.json", lite: "lite-merged.json" },
   wikidata: { label: "Wikidata", full: "companies.json", lite: "lite.json" },
   wikipedia: { label: "Wikipedia", full: "companies-wp.json", lite: "lite-wp.json" },
 };
@@ -21,7 +22,7 @@ let dataSource = (() => {
     const saved = localStorage.getItem("cnwiki.source");
     if (saved && SOURCES[saved]) return saved;
   } catch { /* ignore */ }
-  return "wikidata";
+  return "merged";
 })();
 
 function setDataSource(src) {
@@ -51,11 +52,13 @@ function mountSourceSwitch() {
     if (btn) setDataSource(btn.dataset.src);
   });
   wrap.prepend(box);
-  if (dataSource === "wikipedia") {
+  if (dataSource !== "wikidata") {
     const foot = document.querySelector(".foot p");
     if (foot) {
       const gen = foot.querySelector("#generated")?.outerHTML || '<span id="generated">—</span>';
-      foot.innerHTML = `数据来自 <a href="https://zh.wikipedia.org/">中文维基百科</a> 与 <a href="https://en.wikipedia.org/">English Wikipedia</a>（CC BY-SA 4.0），由公司分类树与信息框解析得出。数据更新于 ${gen}。`;
+      foot.innerHTML = dataSource === "merged"
+        ? `数据融合自 <a href="https://www.wikidata.org/">Wikidata</a>（CC0）与 <a href="https://zh.wikipedia.org/">维基百科</a>（CC BY-SA 4.0），双源去重互补。数据更新于 ${gen}。`
+        : `数据来自 <a href="https://zh.wikipedia.org/">中文维基百科</a> 与 <a href="https://en.wikipedia.org/">English Wikipedia</a>（CC BY-SA 4.0），由公司分类树与信息框解析得出。数据更新于 ${gen}。`;
     }
   }
 }
@@ -63,7 +66,7 @@ mountSourceSwitch();
 
 // Deployed site serves data/ next to index.html; local preview of site/ reads ../data/.
 async function loadData(name = "companies.json") {
-  const src = SOURCES[dataSource] || SOURCES.wikidata;
+  const src = SOURCES[dataSource] || SOURCES.merged;
   const file = name === "lite.json" ? src.lite : name === "companies.json" ? src.full : name;
   for (const path of ["data/" + file, "../data/" + file]) {
     try {
@@ -77,8 +80,13 @@ async function loadData(name = "companies.json") {
 // 省份名去掉「省 / 市 / 自治区 / 特别行政区」等后缀，用于紧凑显示
 const shortProvince = (p) => p.replace(/(壮族|回族|维吾尔)?自治区$|特别行政区$|省$|市$/, "");
 
-// 「含港澳台」「含教育机构」开关：默认关闭，各页共用，记在本浏览器里（存不了也不影响当前页使用）
-const SCOPES = { hmt: (c) => c.hmt, edu: (c) => c.type === "教育机构" };
+// 「含港澳台」「含教育机构」「含公共机构」开关：默认关闭，各页共用，记在本浏览器里
+const PUB_TYPES = new Set(["医院", "博物馆", "图书馆"]);
+const SCOPES = {
+  hmt: (c) => c.hmt,
+  edu: (c) => c.type === "教育机构",
+  pub: (c) => PUB_TYPES.has(c.type),
+};
 const scope = {};
 for (const k in SCOPES) scope[k] = (() => { try { return localStorage.getItem("cnwiki." + k) === "1"; } catch { return false; } })();
 function setScope(k, on) {

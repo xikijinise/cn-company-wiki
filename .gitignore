@@ -4,3 +4,4 @@ __pycache__/
 .claude/
 data/lite.json
 data/lite-wp.json
+data/lite-merged.json

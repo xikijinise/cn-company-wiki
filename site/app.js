@@ -4,7 +4,7 @@ const PAGE = 60;
 const $ = (id) => document.getElementById(id);
 const els = {
   q: $("q"), status: $("status"), type: $("type"), prov: $("prov"), industry: $("industry"), sort: $("sort"),
-  listed: $("listed"), hasSite: $("hasSite"), hasEn: $("hasEn"), hmt: $("hmt"), edu: $("edu"),
+  listed: $("listed"), hasSite: $("hasSite"), hasEn: $("hasEn"), hmt: $("hmt"), edu: $("edu"), pub: $("pub"),
   controls: $("controls"), filters: $("filters"), filterBtn: $("filterBtn"), list: $("list"), count: $("count"), more: $("more"), stats: $("stats"), generated: $("generated"),
 };
 
@@ -124,7 +124,8 @@ function renderStats() {
     `收录 <b>${pool.length.toLocaleString()}</b> 家 · 企业 <b>${n((c) => c.type === "企业")}</b> · 存续 <b>${n((c) => !gone(c))}</b> · ` +
     `有官网 <b>${n((c) => c.website)}</b> · 上市 <b>${n((c) => c.listed)}</b> · 有英文维基 <b>${n((c) => c.enwiki)}</b>` +
     (scope.hmt ? ` · 其中港澳台 <b>${n((c) => c.hmt)}</b>` : "") +
-    (scope.edu ? ` · 其中教育机构 <b>${n((c) => c.type === "教育机构")}</b>` : "");
+    (scope.edu ? ` · 其中教育机构 <b>${n((c) => c.type === "教育机构")}</b>` : "") +
+    (scope.pub ? ` · 其中公共机构 <b>${n((c) => PUB_TYPES.has(c.type))}</b>` : "");
 }
 
 function renderGenerated(data) {
@@ -159,7 +160,7 @@ async function init() {
 // 手机上筛选项折叠在「筛选」按钮后面，按钮上显示已启用的筛选条件数
 function renderFilterBtn() {
   const n = [els.status.value !== "active", els.type.value, els.prov.value, els.industry.value,
-    els.sort.value !== "name", els.listed.checked, els.hasSite.checked, els.hasEn.checked, els.hmt.checked, els.edu.checked].filter(Boolean).length;
+    els.sort.value !== "name", els.listed.checked, els.hasSite.checked, els.hasEn.checked, els.hmt.checked, els.edu.checked, els.pub.checked].filter(Boolean).length;
   els.filterBtn.textContent = n ? `筛选 · ${n}` : "筛选";
   els.filterBtn.classList.toggle("active", n > 0);
 }

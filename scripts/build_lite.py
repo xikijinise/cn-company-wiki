@@ -15,6 +15,7 @@ ROOT = Path(__file__).resolve().parent.parent
 PAIRS = [
     (ROOT / "data" / "companies.json", ROOT / "data" / "lite.json"),
     (ROOT / "data" / "companies-wp.json", ROOT / "data" / "lite-wp.json"),
+    (ROOT / "data" / "companies-merged.json", ROOT / "data" / "lite-merged.json"),
 ]
 
 

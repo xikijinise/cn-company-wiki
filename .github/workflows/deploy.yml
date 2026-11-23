@@ -50,6 +50,11 @@ jobs:
           pip install -r scripts/requirements.txt
           python scripts/fetch_wikipedia.py
 
+      - name: Merge Wikidata & Wikipedia
+        if: github.event_name == 'schedule' || inputs.refresh
+        continue-on-error: true
+        run: python scripts/merge_sources.py
+
       - name: Commit refreshed data
         if: github.event_name == 'schedule' || inputs.refresh
         run: |

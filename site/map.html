@@ -6,7 +6,7 @@
 <title>中国企业地图 · 中国企业维基索引</title>
 <meta name="description" content="按省份查看维基百科有条目的中国大陆企业分布。">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='7' fill='%23b42318'/><text x='16' y='23' font-size='19' text-anchor='middle' fill='white' font-family='sans-serif'>企</text></svg>">
-<link rel="stylesheet" href="style.css?v=2">
+<link rel="stylesheet" href="style.css?v=4">
 </head>
 <body>
 <header class="top">
@@ -23,9 +23,10 @@
     <div class="maptoggle">
       <label class="chk" title="默认只显示中国大陆"><input type="checkbox" id="hmt"> 含港澳台</label>
       <label class="chk" title="学校等，默认不显示"><input type="checkbox" id="edu"> 含教育机构</label>
+      <label class="chk" title="医院、博物馆、图书馆，默认不显示"><input type="checkbox" id="pub"> 含公共机构</label>
     </div>
     <div id="map" class="map"></div>
-    <p class="hint" id="hint">按总部（或所在地）所在省份统计；港澳台、教育机构默认不显示，勾选右上角的选项即可加入。</p>
+    <p class="hint" id="hint">按总部（或所在地）所在省份统计；港澳台、教育机构、公共机构（医院/博物馆/图书馆）默认不显示，勾选右上角的选项即可加入。</p>
   </section>
   <aside class="card rank" aria-label="省份排行">
     <h2>省份排行</h2>
@@ -39,7 +40,7 @@
   <p><a href="https://github.com/xikijinise/cn-company-wiki">GitHub 源码</a></p>
 </footer>
 <script src="vendor/echarts.custom.min.js" defer></script>
-<script src="common.js?v=3" defer></script>
-<script src="map.js" defer></script>
+<script src="common.js?v=4" defer></script>
+<script src="map.js?v=4" defer></script>
 </body>
 </html>
